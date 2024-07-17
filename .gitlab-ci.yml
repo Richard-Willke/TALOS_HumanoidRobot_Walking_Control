@@ -1,0 +1,32 @@
+image: ros:noetic-robot
+
+cache:
+  paths:
+    - ccache/
+
+before_script:
+  - apt update >/dev/null && apt install -y git >/dev/null
+  - git clone https://gitlab.com/VictorLamoine/ros_gitlab_ci.git >/dev/null
+  - source ros_gitlab_ci/gitlab-ci.bash >/dev/null
+
+catkin_make:
+  stage: build
+  script:
+    - catkin_make
+
+catkin build:
+  stage: build
+  script:
+    - catkin build --summarize --no-status --force-color
+  artifacts:
+    paths:
+      - 'catkin_workspace/build'
+      - 'catkin_workspace/devel'
+    expire_in: 4 hrs
+
+catkin lint:
+  stage: test
+  image: ros:noetic-ros-core
+  needs: []
+  script:
+    - catkin_lint -W2 .
