@@ -54,3 +54,6 @@ CATKIN_IGNORE
 ## Some additional ROS files
 .catkin_tools/
 .vscode/
+
+## CI configuration
+builds/
