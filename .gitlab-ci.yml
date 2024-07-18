@@ -5,13 +5,18 @@ cache:
     - ccache/
 
 before_script:
-  - git clone https://gitlab.com/VictorLamoine/ros_gitlab_ci.git >/dev/null
-  - source ros_gitlab_ci/gitlab-ci.bash >/dev/null
-
-catkin_make:
-  stage: build
-  script:
-    - catkin_make
+  - sudo apt install -qqy lsb-release curl
+  - sudo mkdir -p /etc/apt/keyrings
+  - curl http://robotpkg.openrobots.org/packages/debian/robotpkg.asc | sudo tee /etc/apt/keyrings/robotpkg.asc
+  - echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/robotpkg.asc] http://robotpkg.openrobots.org/packages/debian/pub $(lsb_release -cs) robotpkg" | sudo tee /etc/apt/sources.list.d/robotpkg.list
+  - sudo apt update
+  - sudo apt install -qqy robotpkg-py38-pinocchio
+  - sudo apt install -qqy robotpkg-py38-tsid
+# Seems that some packages in robot description are not available in rosdep, therefore
+# we skip the setup script for now. See problem at catkin lint below.
+# Therefore we only setup a running for catkin build command on a machine
+#   - git clone https://gitlab.com/VictorLamoine/ros_gitlab_ci.git >/dev/null
+#   - source ros_gitlab_ci/gitlab-ci.bash >/dev/null
 
 catkin build:
   stage: build
@@ -23,9 +28,23 @@ catkin build:
       - 'catkin_workspace/devel'
     expire_in: 4 hrs
 
-catkin lint:
-  stage: test
-  image: ros:noetic-ros-core
-  needs: []
-  script:
-    - catkin_lint -W2 .
+# This is partly of the scanning result.
+# for these missing packages, some of them are in repository of talos https://github.com/orgs/pal-robotics/repositories
+# Some of them are not publicated. Given this problem, the catkin_lint will always fail.
+# Therefore it is stopped.
+# talos_bringup: package.xml: error: unknown package 'talos_moveit_config'
+# talos_bringup: package.xml: error: unknown package 'play_motion'
+# talos_controller_configuration: package.xml: error: unknown package 'walking_controller'
+# talos_controller_configuration: package.xml: error: unknown package 'head_action'
+# talos_controller_configuration: package.xml: error: unknown package 'walking_utils'
+# talos_controller_configuration: package.xml: error: unknown package 'current_limit_controller'
+# talos_description: package.xml: error: unknown package 'pal_ros_utils'
+# talos_description: package.xml: error: unknown package 'urdf_test'
+# talos_description: package.xml: error: unknown package 'eigen_checks'
+# talos_description: package.xml: error: unknown package 'rbdl'
+# catkin lint:
+#   stage: test
+#   image: ros:noetic-ros-core
+#   needs: []
+#   script:
+#     - catkin_lint -W2 .
