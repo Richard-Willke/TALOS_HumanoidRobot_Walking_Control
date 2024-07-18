@@ -5,13 +5,8 @@ cache:
     - ccache/
 
 before_script:
-  - sudo apt install -qqy lsb-release curl
-  - sudo mkdir -p /etc/apt/keyrings
-  - curl http://robotpkg.openrobots.org/packages/debian/robotpkg.asc | sudo tee /etc/apt/keyrings/robotpkg.asc
-  - echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/robotpkg.asc] http://robotpkg.openrobots.org/packages/debian/pub $(lsb_release -cs) robotpkg" | sudo tee /etc/apt/sources.list.d/robotpkg.list
-  - sudo apt update
-  - sudo apt install -qqy robotpkg-py38-pinocchio
-  - sudo apt install -qqy robotpkg-py38-tsid
+  - export LANG=en_US.UTF-8
+  - export LANGUAGE=en_US.UTF-8
 # Seems that some packages in robot description are not available in rosdep, therefore
 # we skip the setup script for now. See problem at catkin lint below.
 # Therefore we only setup a running for catkin build command on a machine
