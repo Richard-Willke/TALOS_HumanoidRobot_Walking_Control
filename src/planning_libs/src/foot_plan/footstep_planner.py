@@ -7,7 +7,8 @@ import pybullet as pb
 # Files
 from simulator.pybullet_wrapper import PybulletWrapper
 from simulator.robot import Robot
-from talos_class import talos_conf as conf
+#>>>>TODO: replace the following to make it independent of the robot configuration
+from bullet_sims import talos_conf as conf
 
 class Side(Enum):
     """Side

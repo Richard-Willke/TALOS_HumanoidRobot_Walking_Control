@@ -6,15 +6,15 @@ import pinocchio as pin
 from simulator.robot import Robot
 
 # whole-body controller
-from bullet_sims.tsid_wrapper import TSIDWrapper
+from tsid_wrap.tsid_wrapper import TSIDWrapper
 
 # robot configs
 # from walking_control import talos_conf as conf
 # import talos_conf as conf
-from talos_class import talos_conf as conf
+from bullet_sims import talos_conf as conf
 
 # footstep_planner
-from planning_libs.footstep_planner import Side
+from foot_plan.footstep_planner import Side
 
 # ROS visualizations
 import rospy

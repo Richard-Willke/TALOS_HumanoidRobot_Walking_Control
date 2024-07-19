@@ -16,15 +16,14 @@ from simulator.pybullet_wrapper import PybulletWrapper
 
 # robot configs
 #>>>>TODO: Import talos robot
-from talos_class.talos import Talos
+from bullet_sims.talos import Talos
 
 # modules
 #>>>>TODO: Import all previously coded modules
-from planning_libs.foot_trajectory import *
-from planning_libs.footstep_planner import *
-from planning_libs.lip_mpc import *
-from talos_class import talos_conf as conf
-
+from foot_plan.foot_trajectory import SwingFootTrajectory
+from foot_plan.footstep_planner import Side, FootStepPlanner
+from zmp_plan.lip_mpc import LIPMPC, generate_zmp_reference, LIPInterpolator
+from bullet_sims import talos_conf as conf
         
 ################################################################################
 # main

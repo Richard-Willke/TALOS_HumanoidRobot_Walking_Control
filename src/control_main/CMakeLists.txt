@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(walking_control)
+project(control_main)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -11,8 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   bullet_sims
   roscpp
   rospy
-  simulator
-  planning_libs
+  std_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -72,7 +71,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
 #   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
+#   std_msgs
 # )
 
 ################################################
@@ -106,15 +105,13 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES walking_control
-#  CATKIN_DEPENDS bullet_sims roscpp rospy simulator
+#  LIBRARIES control_main
+#  CATKIN_DEPENDS bullet_sims roscpp rospy std_msgs
 #  DEPENDS system_lib
 )
 
-catkin_python_setup()
-
 catkin_install_python(PROGRAMS
-  src/walking.py
+  scripts/walk_tutorial.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
@@ -131,7 +128,7 @@ include_directories(
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/walking_control.cpp
+#   src/${PROJECT_NAME}/control_main.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -142,7 +139,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/walking_control_node.cpp)
+# add_executable(${PROJECT_NAME}_node src/control_main_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -206,7 +203,7 @@ include_directories(
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_walking_control.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_control_main.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

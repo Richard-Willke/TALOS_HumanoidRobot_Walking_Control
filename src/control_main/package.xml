@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>walking_control</name>
+  <name>control_main</name>
   <version>0.0.0</version>
-  <description>The walking_control package</description>
+  <description>The control_main package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
@@ -19,7 +19,7 @@
   <!-- Url tags are optional, but multiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/walking_control</url> -->
+  <!-- <url type="website">http://wiki.ros.org/control_main</url> -->
 
 
   <!-- Author tags are optional, multiple are allowed, one per tag -->
@@ -52,18 +52,15 @@
   <build_depend>bullet_sims</build_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>
-  <build_depend>simulator</build_depend>
-  <build_depend>planning_libs</build_depend>
+  <build_depend>std_msgs</build_depend>
   <build_export_depend>bullet_sims</build_export_depend>
   <build_export_depend>roscpp</build_export_depend>
   <build_export_depend>rospy</build_export_depend>
-  <build_export_depend>simulator</build_export_depend>
-  <build_export_depend>planning_libs</build_export_depend>
+  <build_export_depend>std_msgs</build_export_depend>
   <exec_depend>bullet_sims</exec_depend>
   <exec_depend>roscpp</exec_depend>
   <exec_depend>rospy</exec_depend>
-  <exec_depend>simulator</exec_depend>
-  <exec_depend>planning_libs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

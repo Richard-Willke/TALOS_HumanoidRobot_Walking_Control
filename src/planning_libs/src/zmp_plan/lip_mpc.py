@@ -1,7 +1,8 @@
 import numpy as np
 
 from pydrake.all import MathematicalProgram, Solve
-from talos_class import talos_conf as conf
+# >>>>TODO: replace the following to make it independent of the robot configuration
+from bullet_sims import talos_conf as conf
 
 ################################################################################
 # Helper fnc
