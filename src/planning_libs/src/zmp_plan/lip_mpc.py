@@ -163,13 +163,20 @@ class LIPMPC:
             
         # solve
         result = Solve(prog)
+        # if not result.is_success:
+        #     print("failure")
         if not result.is_success:
-            print("failure")
+            print("Solver failed.")
+            print("Solution result:", result.get_solution_result())
+            print("Decision variable values:", result.get_x_val())
+            print("Constraint violations:", result.get_infeasible_constraints())
+            return np.array([np.nan, np.nan])
             
         self.X_k = result.GetSolution(state)
         self.U_k = result.GetSolution(control)
         if np.isnan(self.X_k).any():
             print("failure")
+            print("Solution contains NaN values.")
         
         self.ZMP_ref_k = ZMP_ref_k
         return self.U_k[0]
