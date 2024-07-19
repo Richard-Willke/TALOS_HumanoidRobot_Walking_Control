@@ -4,6 +4,10 @@ cache:
   paths:
     - ccache/
 
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop" || ($CI_PIPELINE_SOURCE == 'merge_request_event' && ( $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop" || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main" ))
+
 before_script:
   - export LANG=en_US.UTF-8
   - export LANGUAGE=en_US.UTF-8
