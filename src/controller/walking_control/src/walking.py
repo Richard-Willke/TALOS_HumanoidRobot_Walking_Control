@@ -8,6 +8,7 @@ import numpy as np
 import pinocchio as pin
 import pybullet as pb
 
+
 # simulator
 #>>>>TODO: import simulator
 from simulator.robot import Robot
@@ -15,14 +16,14 @@ from simulator.pybullet_wrapper import PybulletWrapper
 
 # robot configs
 #>>>>TODO: Import talos robot
-from walking_control.talos import Talos
+from talos_class.talos import Talos
 
 # modules
 #>>>>TODO: Import all previously coded modules
-from walking_control.foot_trajectory import *
-from walking_control.footstep_planner import *
-from walking_control.lip_mpc import *
-from walking_control import talos_conf as conf
+from planning_libs.foot_trajectory import *
+from planning_libs.footstep_planner import *
+from planning_libs.lip_mpc import *
+from talos_class import talos_conf as conf
 
         
 ################################################################################

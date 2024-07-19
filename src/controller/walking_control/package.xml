@@ -53,14 +53,17 @@
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>
   <build_depend>simulator</build_depend>
+  <build_depend>planning_libs</build_depend>
   <build_export_depend>bullet_sims</build_export_depend>
   <build_export_depend>roscpp</build_export_depend>
   <build_export_depend>rospy</build_export_depend>
   <build_export_depend>simulator</build_export_depend>
+  <build_export_depend>planning_libs</build_export_depend>
   <exec_depend>bullet_sims</exec_depend>
   <exec_depend>roscpp</exec_depend>
   <exec_depend>rospy</exec_depend>
   <exec_depend>simulator</exec_depend>
+  <exec_depend>planning_libs</exec_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

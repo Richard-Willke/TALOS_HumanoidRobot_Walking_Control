@@ -1,7 +1,7 @@
 import numpy as np
 
 from pydrake.all import MathematicalProgram, Solve
-from walking_control import talos_conf as conf
+from talos_class import talos_conf as conf
 
 ################################################################################
 # Helper fnc

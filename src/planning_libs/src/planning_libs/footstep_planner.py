@@ -7,7 +7,7 @@ import pybullet as pb
 # Files
 from simulator.pybullet_wrapper import PybulletWrapper
 from simulator.robot import Robot
-from walking_control import talos_conf as conf
+from talos_class import talos_conf as conf
 
 class Side(Enum):
     """Side

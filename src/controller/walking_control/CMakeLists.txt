@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   simulator
+  planning_libs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -113,7 +114,7 @@ catkin_package(
 catkin_python_setup()
 
 catkin_install_python(PROGRAMS
-  scripts/walking.py
+  src/walking.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
