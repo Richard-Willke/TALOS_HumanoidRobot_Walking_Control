@@ -1,0 +1,50 @@
+image: ros:noetic-robot
+
+cache:
+  paths:
+    - ccache/
+
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop" || ($CI_PIPELINE_SOURCE == 'merge_request_event' && ( $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop" || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main" ))
+
+before_script:
+  - export LANG=en_US.UTF-8
+  - export LANGUAGE=en_US.UTF-8
+  - source /opt/ros/noetic/setup.bash
+# Seems that some packages in robot description are not available in rosdep, therefore
+# we skip the setup script for now. See problem at catkin lint below.
+# Therefore we only setup a running for catkin build command on a machine
+#   - git clone https://gitlab.com/VictorLamoine/ros_gitlab_ci.git >/dev/null
+#   - source ros_gitlab_ci/gitlab-ci.bash >/dev/null
+
+catkin build:
+  stage: build
+  script:
+    - catkin build --summarize --no-status --force-color
+  artifacts:
+    paths:
+      - 'catkin_workspace/build'
+      - 'catkin_workspace/devel'
+    expire_in: 4 hrs
+
+# This is partly of the scanning result.
+# for these missing packages, some of them are in repository of talos https://github.com/orgs/pal-robotics/repositories
+# Some of them are not publicated. Given this problem, the catkin_lint will always fail.
+# Therefore it is stopped.
+# talos_bringup: package.xml: error: unknown package 'talos_moveit_config'
+# talos_bringup: package.xml: error: unknown package 'play_motion'
+# talos_controller_configuration: package.xml: error: unknown package 'walking_controller'
+# talos_controller_configuration: package.xml: error: unknown package 'head_action'
+# talos_controller_configuration: package.xml: error: unknown package 'walking_utils'
+# talos_controller_configuration: package.xml: error: unknown package 'current_limit_controller'
+# talos_description: package.xml: error: unknown package 'pal_ros_utils'
+# talos_description: package.xml: error: unknown package 'urdf_test'
+# talos_description: package.xml: error: unknown package 'eigen_checks'
+# talos_description: package.xml: error: unknown package 'rbdl'
+# catkin lint:
+#   stage: test
+#   image: ros:noetic-ros-core
+#   needs: []
+#   script:
+#     - catkin_lint -W2 .
