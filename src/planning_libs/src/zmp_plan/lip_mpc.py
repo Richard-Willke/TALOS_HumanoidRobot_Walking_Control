@@ -163,8 +163,6 @@ class LIPMPC:
             
         # solve
         result = Solve(prog)
-        # if not result.is_success:
-        #     print("failure")
         if not result.is_success:
             print("Solver failed.")
             print("Solution result:", result.get_solution_result())

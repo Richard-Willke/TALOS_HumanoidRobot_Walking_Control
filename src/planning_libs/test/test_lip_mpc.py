@@ -9,17 +9,14 @@ from scipy.linalg import block_diag
 
 from zmp_plan.lip_mpc import continious_LIP_dynamics, discrete_LIP_dynamics, LIPInterpolator, LIPMPC, generate_zmp_reference
 from bullet_sims import talos_conf as conf
+from foot_plan.foot_trajectory import SwingFootTrajectory
+from foot_plan.footstep_planner import Side, FootStepPlanner
+from bullet_sims.talos import Talos
+from simulator.robot import Robot
+from simulator.pybullet_wrapper import PybulletWrapper
 
 
-def generate_foot_steps(foot_step_0, step_size_x, no_steps):
-    """生成足步计划"""
-    foot_steps = [foot_step_0]
-    for i in range(no_steps-1):
-        new_state = list(foot_steps[i])
-        new_state[0] += step_size_x
-        new_state[2] = -new_state[2] if len(new_state) > 2 else 0
-        foot_steps.append(new_state)
-    return foot_steps
+
 
 class TestLIPMPC(unittest.TestCase):
     
@@ -32,11 +29,20 @@ class TestLIPMPC(unittest.TestCase):
         self.conf.gamma = 1.0
         self.conf.no_mpc_samples_per_horizon = 10
         self.conf.footprint = np.array([0.05, 0.05])
-        self.x_initial = np.array([0.0, 0.0, 0.0, 0.0])
-        self.ZMP_ref_k = np.array([[0.1, 0.1] for _ in range(10)])
+        self.x_initial = np.array([0.0, 0.0, -0.09, 0.0])
         
-        # 生成足步计划
-        self.foot_steps = generate_foot_steps([0, 0, 0, 0], 0.2, 10)
+        simulator = PybulletWrapper()
+        robot = Talos(simulator)
+        T_support_w = robot.supportFootPose() 
+        no_steps = 20
+        planner = FootStepPlanner(conf) 
+        plan = planner.planLine(T_support_w, Side.RIGHT, no_steps)
+        plan.extend(plan[-2:])
+
+        k = 0
+        self.terminal_idx = k + conf.no_mpc_samples_per_horizon * 2
+        ZMP_ref = generate_zmp_reference(plan, conf.no_mpc_samples_per_step)
+        # self.ZMP_ref_k = np.array(ZMP_ref[k:k + self.terminal_idx])
 
 
     def test_continious_LIP_dynamics(self):
@@ -97,21 +103,19 @@ class TestLIPMPC(unittest.TestCase):
         mpc = LIPMPC(self.conf)
         
         foot_steps = [
-            type('FootStep', (object,), {'pose': type('Pose', (object,), {'translation': [i * 0.2, (-1)**i * 0.1]})}) 
+            type('FootStep', (object,), {'pose': type('Pose', (object,), {'translation': np.array([i * 0.2, (-1)**i * 0.1])})}) 
             for i in range(10)
         ]
-        ZMP_ref_k = generate_zmp_reference(foot_steps, self.conf.no_mpc_samples_per_horizon)
+        ZMP_ref_k = np.array(generate_zmp_reference(foot_steps, self.conf.no_mpc_samples_per_horizon))
         
-        u = mpc.buildSolveOCP(self.x_initial, ZMP_ref_k, 5)
+        interpolator = LIPInterpolator(self.x_initial, self.conf)
+        x_k = interpolator.x
+        u = mpc.buildSolveOCP(x_k, ZMP_ref_k, self.terminal_idx)
         
         self.assertEqual(u.shape, (2,))
         
         u_lower_bound = ZMP_ref_k[0] - self.conf.footprint
         u_upper_bound = ZMP_ref_k[0] + self.conf.footprint
-        
-        print("u:", u)
-        print("u_lower_bound:", u_lower_bound)
-        print("u_upper_bound:", u_upper_bound)
         
         self.assertTrue(np.all(u >= u_lower_bound) and np.all(u <= u_upper_bound), msg="Control output u is out of the expected range.")
         
@@ -128,7 +132,6 @@ class TestLIPMPC(unittest.TestCase):
         self.assertEqual(mpc.ZMP_ref_k.shape, (self.conf.no_mpc_samples_per_horizon, 2), msg="ZMP reference trajectory has incorrect shape.")
         for i in range(self.conf.no_mpc_samples_per_horizon):
             self.assertTrue(np.allclose(mpc.ZMP_ref_k[i], ZMP_ref_k[i], atol=1e-2), msg=f"ZMP reference at step {i} does not match the expected values.")
-    
 
 
 
