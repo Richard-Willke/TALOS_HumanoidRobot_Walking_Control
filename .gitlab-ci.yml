@@ -7,6 +7,7 @@ cache:
 before_script:
   - export LANG=en_US.UTF-8
   - export LANGUAGE=en_US.UTF-8
+  - source /opt/ros/noetic/setup.bash
 # Seems that some packages in robot description are not available in rosdep, therefore
 # we skip the setup script for now. See problem at catkin lint below.
 # Therefore we only setup a running for catkin build command on a machine
