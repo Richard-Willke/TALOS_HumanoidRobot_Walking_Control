@@ -267,12 +267,21 @@ class TSIDWrapper:
         SE3 task for left hand pose
         '''
         # TODO: ADD a tsid.TaskSE3Equality for the left hand
-        self.LH = robot.model().getFrameId(conf.lh_frame_name)    # the frame id
-        T_lh_w = self.robot.framePosition(data, self.LH)          
+        # self.LH = # the frame id
+        # self.leftHandTask = # the motion task
+        # self.lh_ref = # the TrajectorySample (see: create_sample(...))
+        self.LH = robot.model().getFrameId(conf.lh_frame_name)
         self.leftHandTask = tsid.TaskSE3Equality(
-            "task-left-hand", self.robot, self.conf.lh_frame_name) # the motion task
-        self.leftHandTask.setKp(100*np.array([1, 1, 1, 0, 0, 0]))
-        self.leftHandTask.setKd(2.0 * np.sqrt(100) * np.array([1, 1, 1, 0, 0, 0]))
+            "task-left-hand", self.robot, self.conf.lh_frame_name)
+        self.leftHandTask.setKp(
+            self.conf.kp_hand * np.array([1, 1, 1, 0, 0, 0]))
+        self.leftHandTask.setKd(
+            2.0 * np.sqrt(self.conf.kp_hand) * np.array([1, 1, 1, 0, 0, 0]))
+        # self.lh_ref = create_sample(robot.framePosition(data, self.LH))
+        # self.trajRF = tsid.TrajectorySE3Constant("traj-left-hand", H_lh_ref)
+
+        # left hand reference
+        T_lh_w = self.robot.framePosition(data, self.LH)
         self.lh_ref = create_sample(T_lh_w)
         self.leftHandTask.setReference(self.lh_ref)
 
@@ -280,14 +289,27 @@ class TSIDWrapper:
         SE3 task for right hand pose
         '''
         # TODO: ADD a tsid.TaskSE3Equality for the right hand
-        self.RH = robot.model().getFrameId(conf.rh_frame_name)      # the frame id
-        T_rh_w = self.robot.framePosition(data, self.RH)
+        # self.RH = # the frame id
+        # self.rightHandTask = # the motion task
+        # self.rh_ref = # the TrajectorySample (see: create_sample(...))
+        self.RH = robot.model().getFrameId(conf.rh_frame_name)
         self.rightHandTask = tsid.TaskSE3Equality(
-            "task-right-hand", self.robot, self.conf.rh_frame_name) # the motion task
-        self.rightHandTask.setKp(100*np.array([1, 1, 1, 0, 0, 0]))
-        self.rightHandTask.setKd(2.0 * np.sqrt(100) * np.array([1, 1, 1, 0, 0, 0]))
-        self.rh_ref = create_sample(T_rh_w)                         # the TrajectorySample (see: create_sample(...))
+            "task-left-hand", self.robot, self.conf.rh_frame_name)
+        self.rightHandTask.setKp(
+            self.conf.kp_hand * np.array([1, 1, 1, 0, 0, 0]))
+        self.rightHandTask.setKd(
+            2.0 * np.sqrt(self.conf.kp_hand) * np.array([1, 1, 1, 0, 0, 0]))
+        # self.rh_ref = create_sample(robot.framePosition(data, self.RH))
+
+        # # FIXME: need?
+        # H_rh_ref = robot.framePosition(data, self.RH)
+        # self.trajRF = tsid.TrajectorySE3Constant("traj-left-hand", H_rh_ref)
+
+        # right hand reference
+        T_rh_w = self.robot.framePosition(data, self.RH)
+        self.rh_ref = create_sample(T_rh_w)
         self.rightHandTask.setReference(self.rh_ref)
+
 
         ########################################################################
         # torso task
@@ -332,6 +354,7 @@ class TSIDWrapper:
         '''
         add bound on the actuator velocites
         '''
+
         jointVelBoundsTask = tsid.TaskJointBounds(
             "task-joint-vel-bounds", robot, conf.dt)
         self.v_max = conf.v_max_scaling * \
@@ -435,6 +458,14 @@ class TSIDWrapper:
 
     def comReference(self):
         return self.com_ref
+    
+    ############################################################################
+    # am
+    ############################################################################
+
+    def setAmRefState(self, amRef):
+        ref = create_sample(amRef)
+        self.amTask.setReference(ref)
 
     ############################################################################
     # torso task
@@ -461,7 +492,7 @@ class TSIDWrapper:
         T_frame_w = self.robot.framePosition(data, self.base_id)
         v_frame_w = self.robot.frameVelocity(data, self.base_id)
         if dv is not None:
-            a_frame_w = self.torso_task.getAcceleration(dv)
+            a_frame_w = self.torsoTask.getAcceleration(dv)
             return T_frame_w, v_frame_w, a_frame_w
         return T_frame_w, v_frame_w
 
@@ -471,7 +502,8 @@ class TSIDWrapper:
 
     def setPostureRef(self, q):
         update_sample(self.posture_ref, q)
-        self.posture_task.setReference(self.posture_ref)
+        # self.posture_task.setReference(self.posture_ref)
+        self.postureTask.setReference(self.posture_ref)
 
     ############################################################################
     # set endeffector motion references
@@ -492,12 +524,20 @@ class TSIDWrapper:
         update_sample(self.lf_ref, pose, vel, acc)
         self.leftFootTask.setReference(self.lf_ref)
 
+    # NOTE: fix bug
+    # def set_LF_pos_ref(self, pos, vel=None, acc=None):
+    #     X = self.lf_ref.pos(); X[:3] = pos
+    #     V = self.lf_ref.vel(); V[:3] = vel
+    #     A = self.lf_ref.acc(); A[:3] = acc
+    #     update_sample(self.lf_ref, X, V, A)
+    #     self.leftFootTask.setReference(self.lf_ref)
     def set_LF_pos_ref(self, pos, vel=None, acc=None):
-        X = self.lf_ref.pos(); X[:3] = pos
-        V = self.lf_ref.vel(); V[:3] = vel
-        A = self.lf_ref.acc(); A[:3] = acc
+        X = self.lf_ref.value(); X[:3] = pos
+        V = self.lf_ref.derivative(); V[:3] = vel
+        A = self.lf_ref.second_derivative(); A[:3] = acc
         update_sample(self.lf_ref, X, V, A)
         self.leftFootTask.setReference(self.lf_ref)
+
 
     def set_RH_pose_ref(self, pose, vel=None, acc=None):
         update_sample(self.rh_ref, pose, vel, acc)
