@@ -1,3 +1,31 @@
+"""
+Provides various helper functions and classes for simulating and controlling the Talos robot using the whole-body controller (WBC) and pybullet.
+
+Classes:
+    Talos: Class representing the Talos robot, combining WBC with pybullet, and providing functions to read and set sensor values.
+
+Methods:
+    __init__: Initializes the Talos robot in the given simulator.
+    update: Updates the robot state, estimators, and WBC.
+    setSupportFoot: Sets the support foot of the robot on the given side.
+    setSwingFoot: Sets the swing foot of the robot on the given side.
+    updateSwingFootRef: Updates the swing foot motion reference.
+    swingFootPose: Returns the pose of the current swing foot.
+    supportFootPose: Returns the pose of the current support foot.
+    publish: Publishes various ROS topics for visualization.
+    publish_joint_states: Publishes the joint states of the robot.
+    publish_base_link: Publishes the base link transform.
+    publish_wrenches: Publishes the wrenches for the left and right feet.
+    publish_dcm_zmp_markers: Publishes DCM and ZMP markers for visualization.
+    _solve: Solves the WBC and commands the torque to the pybullet robot.
+    _update_zmp_estimate: Updates the estimated ZMP position.
+    _update_dcm_estimate: Updates the estimated DCM position.
+    record_ankle_wrenches: Records the ankle wrenches.
+    record_ankle_positions: Records the ankle positions.
+    compute_ZMP: Computes the ZMP based on force torque sensor readings.
+    compute_DCM: Computes the DCM based on the current center of mass state.
+"""
+
 #!/usr/bin/env python3
 import numpy as np
 import pinocchio as pin
@@ -30,9 +58,28 @@ from std_msgs.msg import Header
 import tf
 
 class Talos:
-    """Talos robot
-    combines wbc with pybullet, functions to read and set
-    sensor values.
+    """
+    Talos robot class combining whole-body control with pybullet simulation, and provides functions to read and set sensor values.
+
+    Args:
+        simulator: The simulation environment.
+
+    Attributes:
+        conf: Configuration parameters.
+        sim: The simulation environment.
+        stack: The TSIDWrapper instance for whole-body control.
+        robot: The Robot instance for simulation.
+        model: The robot model.
+        data: Data for the robot model.
+        support_foot: The support foot side.
+        swing_foot: The swing foot side.
+        zmp: Zero Moment Point (ZMP) position.
+        dcm: Divergent Component of Motion (DCM) position.
+        pub_joint: ROS publisher for joint states.
+        broadcaster: ROS TransformBroadcaster for base link.
+        pub_zmp_dcm: ROS publisher for ZMP and DCM markers.
+        pub_wrench_left: ROS publisher for left foot wrench.
+        pub_wrench_right: ROS publisher for right foot wrench.
     """
     ###########################################################################################
     #                                          Init                                           #
@@ -40,12 +87,9 @@ class Talos:
     def __init__(self, simulator):
         self.conf = conf
         self.sim = simulator
-        
-        #>>>>TODO: Like allways create the tsid wrapper
         self.stack = TSIDWrapper(conf)
         
         # spawn robot in simulation
-        #>>>>TODO: Create the pybullet robot for the simulation
         z_init = 1.1
         basePosition = np.array([0, 0, z_init])
         baseQuaternion = np.array([0, 0, 0, 1])
@@ -78,7 +122,6 @@ class Talos:
         # sensors
         ########################################################################
         # ft sensors
-        #>>>>TODO: Turn on the force torque sensor in the robots feet
         pb.enableJointForceTorqueSensor(self.robot.id(), self.robot.jointNameIndexMap()['leg_right_6_joint'], True)
         pb.enableJointForceTorqueSensor(self.robot.id(), self.robot.jointNameIndexMap()['leg_left_6_joint'], True)
 
@@ -86,19 +129,10 @@ class Talos:
         ########################################################################
         # visualizations
         ########################################################################
-        
-        #>>>> TODO: joint state publisher
+        # Publisher
         self.pub_joint = rospy.Publisher('/joint_states', JointState, queue_size=10)
-
-        #>>>> TODO: floating base broadcaster
         self.broadcaster = tf2_ros.TransformBroadcaster()
-        
-        #>>>> TODO: zmp and dcm point publisher 
-        #>>>> Hint: Use visualization_msgs::MarkerArray, SPHERE to visualize 
         self.pub_zmp_dcm = rospy.Publisher('/zmp_and_dcm', MarkerArray, queue_size=10)
-        
-        #>>>> TODO: wrench publisher for left and right foot
-        #>>>> Hint: use geometry_msgs::Wrench
         self.pub_wrench_left = rospy.Publisher('/wrench_left', WrenchStamped, queue_size=10)
         self.pub_wrench_right = rospy.Publisher('/wrench_right', WrenchStamped, queue_size=10)
            
@@ -107,14 +141,14 @@ class Talos:
     #                                         Update                                          #
     ###########################################################################################
     def update(self):
-        """updates the robot
+        """
+        Updates the robot state, estimators, and WBC.
         """
         t = self.sim.simTime()
         dt = self.sim.stepTime()
 
-        #>>>> TODO: update the pybullet robot
         self.robot.update()
-        pin.forwardKinematics(self.model, self.data, self.robot._q)       # FIXME
+        pin.forwardKinematics(self.model, self.data, self.robot._q)
         pin.updateFramePlacements(self.model, self.data)
         
         # update the estimators
@@ -129,15 +163,14 @@ class Talos:
     #                                          Foot                                           #
     ###########################################################################################
     def setSupportFoot(self, side):
-        """sets the the support foot of the robot on given side
         """
-        
-        # The support foot is in rigid contact with the ground and should 
-        # hold the weight of the robot
+        Sets the support foot of the robot on the given side.
+
+        Args:
+            side (Side): The side (LEFT or RIGHT) to set as the support foot.
+        """        
         self.support_foot = side
-        
-        #>>>> TODO: Activate the foot contact on the support foot
-        #>>>> TODO: At the same time deactivate the motion task on the support foot
+
         if self.support_foot == Side.LEFT:
             self.stack.add_contact_LF()
             self.stack.remove_contact_RF()
@@ -147,14 +180,14 @@ class Talos:
 
     
     def setSwingFoot(self, side):
-        """sets the swing foot of the robot on given side
         """
-        
-        # The swing foot is not in contact and can move
+        Sets the swing foot of the robot on the given side.
+
+        Args:
+            side (Side): The side (LEFT or RIGHT) to set as the swing foot.
+        """
         self.swing_foot = side
         
-        #>>>> TODO: Deactivate the foot contact on the swing foot
-        #>>>> TODO: At the same time turn on the motion task on the swing foot
         if self.swing_foot == Side.LEFT:
             self.stack.remove_contact_LF()
             self.stack.add_contact_RF()
@@ -164,62 +197,68 @@ class Talos:
 
         
     def updateSwingFootRef(self, T_swing_w, V_swing_w, A_swing_w):
-        """updates the swing foot motion reference
         """
-        
-        #>>>> TODO: set the pose, velocity and acceleration on the swing foots
-        # motion task
+        Updates the swing foot motion reference.
+
+        Args:
+            T_swing_w (numpy.ndarray): Pose reference. Shape (4, 4)
+            V_swing_w (numpy.ndarray): Velocity reference. Shape (6,)
+            A_swing_w (numpy.ndarray): Acceleration reference. Shape (6,)
+        """        
         if self.swing_foot == Side.LEFT:
-            # self.stack.set_motion_LF(T_swing_w, V_swing_w, A_swing_w)
             self.stack.set_LF_pos_ref(T_swing_w, V_swing_w, A_swing_w)
         elif self.swing_foot == Side.RIGHT:
-            # self.stack.set_motion_RF(T_swing_w, V_swing_w, A_swing_w)
             self.stack.set_RF_pos_ref(T_swing_w, V_swing_w, A_swing_w)
 
 
     def swingFootPose(self):
-        """return the pose of the current swing foot
         """
-        #>>>>TODO: return correct foot pose
+        Returns the pose of the current swing foot.
+
+        Returns:
+            numpy.ndarray: Pose of the current swing foot. Shape (4, 4)
+        """
         if self.swing_foot == Side.LEFT:
             return self.stack.get_placement_LF()
         elif self.swing_foot == Side.RIGHT:
             return self.stack.get_placement_RF()
-        # return None
+
     
 
     def supportFootPose(self):
-        """return the pose of the current support foot
         """
-        #>>>>TODO: return correct foot pose
+        Returns the pose of the current support foot.
+
+        Returns:
+            numpy.ndarray: Pose of the current support foot. Shape (4, 4)
+        """
         if self.support_foot == Side.LEFT:
             return self.stack.get_placement_LF()
         elif self.support_foot == Side.RIGHT:
             return self.stack.get_placement_RF()
-        # return None
+
 
 
     ###########################################################################################
     #                                         Publish                                         #
     ###########################################################################################
     def publish(self):
-        # t = rospy.Time.now()
-        
-        #>>>> TODO: publish the jointstate
+        """
+        Publishes various ROS topics for visualization.
+        """
         self.publish_joint_states()
-        
-        #>>>> TODO: broadcast odometry
+
         T_b_w, T_dv, T_da = self.stack.baseState(self.dq_sol)
         self.publish_base_link(T_b_w)
-        
-        #>>>> TODO: publish feet wrenches
-        self.publish_wrenches()
 
-        #>>>> TODO: publish dcm and zmp marker
+        self.publish_wrenches()
         self.publish_dcm_zmp_markers()
 
 
     def publish_joint_states(self):
+        """
+        Publishes the joint states of the robot.
+        """
         joint_state = JointState()
         joint_state.header = Header()
         joint_state.header.frame_id = 'base_link'
@@ -236,7 +275,14 @@ class Talos:
         joint_state.velocity = self.robot._v[6:]     # q_dot
         self.pub_joint.publish(joint_state)
     
+
     def publish_base_link(self, T_b_w):
+        """
+        Publishes the base link transform.
+
+        Args:
+            T_b_w (numpy.ndarray): Base link transform. Shape (4, 4)
+        """
         msg = TransformStamped()
         msg.header.stamp = rospy.Time.now()
         msg.header.frame_id = 'world'
@@ -261,6 +307,9 @@ class Talos:
 
     
     def publish_wrenches(self):
+        """
+        Publishes the wrenches for the left and right feet.
+        """
         wrench_left = pb.getJointState(self.robot.id(), self.robot.jointNameIndexMap()['leg_left_6_joint'])[2]
         wrench_right = pb.getJointState(self.robot.id(), self.robot.jointNameIndexMap()['leg_right_6_joint'])[2]
 
@@ -288,7 +337,11 @@ class Talos:
         wrench_right_msg.wrench.torque.z = wrench_right[5]
         self.pub_wrench_right.publish(wrench_right_msg)
 
+
     def publish_dcm_zmp_markers(self):
+        """
+        Publishes DCM and ZMP markers for visualization.
+        """
         zmp_marker = Marker()
         zmp_marker.header = Header()
         zmp_marker.header.stamp = rospy.Time.now()
@@ -336,12 +389,18 @@ class Talos:
     ############################################################################
 
     def _solve(self, t, dt):
+        """
+        Solves the WBC and commands the torque to the pybullet robot.
+
+        Args:
+            t (float): Current simulation time.
+            dt (float): Simulation time step.
+        """
         # get the current state
         q = self.robot.q()
         v = self.robot.v()
         
         # solve the whole body qp
-        #>>>> TODO: sovle the wbc and command the torque to pybullet robot
         tau_sol, self.dq_sol = self.stack.update(q, v, t)
         self.robot.setActuatedJointTorques(tau_sol)
 
@@ -349,18 +408,22 @@ class Talos:
     def _update_zmp_estimate(self):
         """update the estimated zmp position
         """
-        #>>>> TODO: compute the zmp based on force torque sensor readings
         self.zmp = self.compute_ZMP()
 
         
     def _update_dcm_estimate(self):
         """update the estimated dcm position
         """
-        #>>>> TODO: compute the com based on current center of mass state
         self.dcm = self.compute_DCM()
 
 
     def record_ankle_wrenches(self):
+        """
+        Records the ankle wrenches.
+
+        Returns:
+            tuple: Wrenches for the right and left ankles.
+        """
         wren = pb.getJointState(self.robot.id(), self.robot.jointNameIndexMap()['leg_right_6_joint'])[2]
         wnp = np.array([-wren[0], -wren[1], -wren[2], -wren[3], -wren[4], -wren[5]])
         wr_rankle = pin.Force(wnp)
@@ -373,6 +436,12 @@ class Talos:
     
 
     def record_ankle_positions(self):
+        """
+        Records the ankle positions.
+
+        Returns:
+            tuple: Positions for the left and right ankles, and the left and right ankle joints.
+        """
         data = self.robot._model.createData()
         pin.framesForwardKinematics(self.robot._model, data, self.robot.q())
 
@@ -386,6 +455,15 @@ class Talos:
     
 
     def compute_ZMP(self, d=conf.d_ZMP):
+        """
+        Computes the ZMP based on force torque sensor readings.
+
+        Args:
+            d (float): Distance for ZMP computation.
+
+        Returns:
+            numpy.ndarray: ZMP position. Shape (2,)
+        """
         # wr_rankle: right ankle wrench
         # f_x_right: [force] measured by the [right] ankle-[x]
         # tau_x_right: [torque] measured by the [right] ankle-[x]
@@ -415,6 +493,15 @@ class Talos:
         return ZMP
 
     def compute_DCM(self, g=9.81):
+        """
+        Computes the DCM based on the current center of mass state.
+
+        Args:
+            g (float): Gravitational constant.
+
+        Returns:
+            numpy.ndarray: DCM position. Shape (2,)
+        """
         # x is projection to the ground -> baseCoMPosition()
         xp = self.robot.baseCoMPosition()
         xp_dot = self.robot.baseCoMVelocity()
