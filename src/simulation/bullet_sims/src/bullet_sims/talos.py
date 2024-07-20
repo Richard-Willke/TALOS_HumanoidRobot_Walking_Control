@@ -201,9 +201,11 @@ class Talos:
         Updates the swing foot motion reference.
 
         Args:
-            T_swing_w (numpy.ndarray): Pose reference. Shape (4, 4)
-            V_swing_w (numpy.ndarray): Velocity reference. Shape (6,)
-            A_swing_w (numpy.ndarray): Acceleration reference. Shape (6,)
+            T_swing_w (numpy.ndarray): Pose reference. pin.SE3(R, p)
+                                       Rotation Matrix R, T_swing_w.rotation, Shape (3, 3)
+                                       Translation Vector p, T_swing_w.translation, Shape (3, )
+            V_swing_w (numpy.ndarray): Velocity reference. Shape (3,)
+            A_swing_w (numpy.ndarray): Acceleration reference. Shape (3,)
         """        
         if self.swing_foot == Side.LEFT:
             self.stack.set_LF_pos_ref(T_swing_w, V_swing_w, A_swing_w)
@@ -216,7 +218,9 @@ class Talos:
         Returns the pose of the current swing foot.
 
         Returns:
-            numpy.ndarray: Pose of the current swing foot. Shape (4, 4)
+            numpy.ndarray: Pose of the current swing foot. pin.SE3(R, p)
+                           Rotation Matrix R, T_swing_w.rotation, Shape (3, 3)
+                           Translation Vector p, T_swing_w.translation, Shape (3, )
         """
         if self.swing_foot == Side.LEFT:
             return self.stack.get_placement_LF()
@@ -230,7 +234,9 @@ class Talos:
         Returns the pose of the current support foot.
 
         Returns:
-            numpy.ndarray: Pose of the current support foot. Shape (4, 4)
+            numpy.ndarray: Pose of the current support foot. pin.SE3(R, p)
+                           Rotation Matrix R, T_support_w.rotation, Shape (3, 3)
+                           Translation Vector p, T_support_w.translation, Shape (3, )
         """
         if self.support_foot == Side.LEFT:
             return self.stack.get_placement_LF()
@@ -281,7 +287,9 @@ class Talos:
         Publishes the base link transform.
 
         Args:
-            T_b_w (numpy.ndarray): Base link transform. Shape (4, 4)
+            T_b_w (numpy.ndarray): Base link transform. pin.SE3(R, p)
+                                   Rotation Matrix R, T_b_w.rotation, Shape (3, 3)
+                                   Translation Vector p, T_b_w.translation, Shape (3, )
         """
         msg = TransformStamped()
         msg.header.stamp = rospy.Time.now()
@@ -406,13 +414,13 @@ class Talos:
 
     
     def _update_zmp_estimate(self):
-        """update the estimated zmp position
+        """update the estimated zmp position. Shape (2,)
         """
         self.zmp = self.compute_ZMP()
 
         
     def _update_dcm_estimate(self):
-        """update the estimated dcm position
+        """update the estimated dcm position. Shape (2,)
         """
         self.dcm = self.compute_DCM()
 
