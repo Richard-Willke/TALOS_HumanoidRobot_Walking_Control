@@ -5,16 +5,21 @@ import matplotlib.pyplot as plt
 
 class SwingFootTrajectory:
     """SwingFootTrajectory
-    Interpolate Foot trajectory between SE3 T0 and T1
+    Interpolate Foot trajectory between two swing foot poses
+    
+    TODO: Actually there we only have R3 interpolation, we should add orientation interpolation as well
     """
-    def __init__(self, T0, T1, duration, height=0.05):
+    def __init__(self, T0: pin.SE3, T1: pin.SE3, duration: float, height=0.05):
         """initialize SwingFootTrajectory
 
         Args:
-            T0 (pin.SE3): Inital foot pose
-            T1 (pin.SE3): Final foot pose
-            duration (float): step duration
-            height (float, optional): setp height. Defaults to 0.05.
+            T0: Inital foot pose
+            T1: Final foot pose
+            duration: step of expected duration
+            height: step height. Defaults to 0.05.
+
+        Returns:
+            SwingFootTrajectory object
         """
         self._height = height
         self._t_elapsed = 0.0
@@ -23,22 +28,40 @@ class SwingFootTrajectory:
 
     def reset(self, T0, T1):
         '''reset back to zero, update poses
+
+        Args:
+            T0: Inital foot pose
+            T1: Final foot pose
+
+        Returns:
+            None
         '''
-        #>>>>TODO: plan the spline
         self.T0 = T0
         self.T1 = T1
 
         t = self._duration
         t_mid = t / 2
-        # coeffs_z(0.5*t) = self._height
-        # 0.5*a*time*time = h
-        # => a = 2*h/time/time = 6*h/(t^2)
-        # a = 6 * self._height / (t*t)
+
         self.coeffs_x = self.compute_quintic_coeffs(T0.translation[0], T1.translation[0], 0, 0, 0, 0, t)
         self.coeffs_y = self.compute_quintic_coeffs(T0.translation[1], T1.translation[1], 0, 0, 0, 0, t)
         self.coeffs_z = self.compute_quintic_coeffs_with_midpoint(T0.translation[2], T1.translation[2], 0, 0, 0, 0, t, self._height, t_mid)
 
     def compute_quintic_coeffs(self, p0, pf, v0, vf, a0, af, T):
+        """compute quintic coefficients
+
+        Args:
+            p0: initial position
+            pf: final position
+            v0: initial velocity
+            vf: final velocity
+            a0: initial acceleration
+            af: final acceleration
+            T: duration
+        
+        Returns:
+            coefficients(np.array): coefficients of quintic polynomial
+        """
+            
         A = np.array([
             [0, 0, 0, 0, 0, 1],                             # x(0)
             [T**5, T**4, T**3, T**2, T, 1],                 # x(T)
@@ -52,6 +75,22 @@ class SwingFootTrajectory:
         return coeffs
 
     def compute_quintic_coeffs_with_midpoint(self, p0, pf, v0, vf, a0, af, T, p_mid, T_mid):
+        """compute quintic coefficients with midpoint
+
+        Args:
+            p0: initial position
+            pf: final position
+            v0: initial velocity
+            vf: final velocity
+            a0: initial acceleration
+            af: final acceleration
+            T: duration
+            p_mid: midpoint position
+            T_mid: midpoint time
+
+        Returns:
+            coefficients(np.array): coefficients of quintic polynomial
+        """
         A = np.array([
             [0, 0, 0, 0, 0, 0, 1],                                              # Initial Position
             [T_mid**6, T_mid**5, T_mid**4, T_mid**3, T_mid**2, T_mid, 1],       # Middle Position
@@ -67,12 +106,36 @@ class SwingFootTrajectory:
 
 
     def isDone(self):
-        return self._t_elapsed >= self._duration 
+        """check if trajectory is done
+        
+        Args:
+            None
+
+        Returns:
+            bool: True if last time step has been reached
+        """
+        is_close = np.isclose(self._t_elapsed, self._duration)
+        if is_close:
+            return True
+        
+        is_more = self._t_elapsed > self._duration
+        if is_more:
+            print("[Warning]: SwingFootTrajectory has passed the end time")
+            return True
+        else:
+            return False
     
     def evaluate(self, t):
-        """evaluate at time t
+        """evaluate the result at time t
+
+        Args:
+            t: time
+        
+        Returns:
+            pose(np.array): position
+            vel(np.array): velocity
+            acc(np.array): acceleration
         """
-        #>>>>TODO: evaluate the spline at time t, return pose, velocity, acceleration
         pos_x = np.polyval(self.coeffs_x, t)
         pos_y = np.polyval(self.coeffs_y, t)
         pos_z = np.polyval(self.coeffs_z, t)
@@ -92,13 +155,9 @@ class SwingFootTrajectory:
         self._t_elapsed = t
         return pose, vel, acc
 
-
-
 if __name__=="__main__":
     T0 = pin.SE3(np.eye(3), np.array([0, 0, 0]))
     T1 = pin.SE3(np.eye(3), np.array([0.2, 0, 0]))
-
-    #>>>>TODO: plot to make sure everything is correct
 
     duration = 3.0
     height = 0.05
@@ -127,7 +186,6 @@ if __name__=="__main__":
     ax[2].plot(time_list, np.array(acc_list)[:, 0], label='Acc x')
     ax[2].plot(time_list, np.array(acc_list)[:, 1], label='Acc y')
     ax[2].plot(time_list, np.array(acc_list)[:, 2], label='Acc z')
-
 
     for ax in ax:
         ax.legend(loc='upper right')
