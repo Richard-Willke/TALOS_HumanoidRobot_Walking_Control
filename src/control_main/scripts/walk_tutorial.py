@@ -50,8 +50,8 @@ def main():
     
     # setup the plan
     no_steps = 20
-    planner = FootStepPlanner(conf)         #>>>>TODO: Create the planner
-    plan = planner.planLine(T_support_w, Side.RIGHT, no_steps)      #>>>>TODO: Create the plan
+    planner = FootStepPlanner()         #>>>>TODO: Create the planner
+    plan = planner.plan_steps(T_support_w, Side.RIGHT, no_steps, 0, walking_start=True, walking_stop=True)      #>>>>TODO: Create the plan
     #>>>>TODO: Append the two last steps once more to the plan so our mpc horizon will never run out 
     # plan.append(plan[-2:])
     plan.extend(plan[-2:])
