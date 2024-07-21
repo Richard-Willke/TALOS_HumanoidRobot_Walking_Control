@@ -166,15 +166,22 @@ class Talos:
     def updateSwingFootRef(self, T_swing_w, V_swing_w, A_swing_w):
         """updates the swing foot motion reference
         """
+        R = np.array([[np.cos(T_swing_w[-1]), -np.sin(T_swing_w[-1]), 0],
+                      [np.sin(T_swing_w[-1]),  np.cos(T_swing_w[-1]), 0],
+                      [0,                      0,                     1]])
         
         #>>>> TODO: set the pose, velocity and acceleration on the swing foots
         # motion task
         if self.swing_foot == Side.LEFT:
             # self.stack.set_motion_LF(T_swing_w, V_swing_w, A_swing_w)
-            self.stack.set_LF_pos_ref(T_swing_w, V_swing_w, A_swing_w)
+            #self.stack.set_LF_pos_ref(T_swing_w, V_swing_w, A_swing_w)
+            pose = pin.SE3(R, np.array(T_swing_w[:-1]))
+            self.stack.set_LF_pose_ref(pose, vel = np.array(V_swing_w), acc = np.array(A_swing_w))
         elif self.swing_foot == Side.RIGHT:
             # self.stack.set_motion_RF(T_swing_w, V_swing_w, A_swing_w)
-            self.stack.set_RF_pos_ref(T_swing_w, V_swing_w, A_swing_w)
+            #self.stack.set_RF_pos_ref(T_swing_w, V_swing_w, A_swing_w)
+            pose = pin.SE3(R, np.array(T_swing_w[:-1]))
+            self.stack.set_RF_pose_ref(pose, vel = np.array(V_swing_w), acc = np.array(A_swing_w))
 
 
     def swingFootPose(self):
