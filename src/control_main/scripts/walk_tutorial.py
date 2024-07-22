@@ -10,16 +10,16 @@ import pybullet as pb
 
 
 # simulator
-#>>>>TODO: import simulator
+# import simulator
 from simulator.robot import Robot
 from simulator.pybullet_wrapper import PybulletWrapper
 
 # robot configs
-#>>>>TODO: Import talos robot
+# Import talos robot
 from bullet_sims.talos import Talos
 
 # modules
-#>>>>TODO: Import all previously coded modules
+# Import all previously coded modules
 from foot_plan.foot_trajectory import SwingFootTrajectory
 from foot_plan.footstep_planner import Side, FootStepPlanner
 from zmp_plan.lip_mpc import LIPMPC, generate_zmp_reference, LIPInterpolator
@@ -36,47 +36,46 @@ def main():
     ############################################################################
     
     # setup the simulator
-    #>>>>TODO: simulation
+    # simulation
     simulator = PybulletWrapper()
         
     # setup the robot
-    #>>>> TODO: robot
     robot = Talos(simulator)
     
     # inital footsteps
-    T_swing_w = robot.swingFootPose()       #>>>>TODO: set intial swing foot pose to left foot
-    T_support_w = robot.supportFootPose()   #>>>>TODO: set intial swing foot pose to right foot 
+    T_swing_w = robot.swingFootPose()       # set intial swing foot pose to left foot
+    T_support_w = robot.supportFootPose()   # set intial swing foot pose to right foot 
                                
     
     # setup the plan
     no_steps = 20
-    planner = FootStepPlanner(conf)         #>>>>TODO: Create the planner
-    plan = planner.planLine(T_support_w, Side.RIGHT, no_steps)      #>>>>TODO: Create the plan
-    #>>>>TODO: Append the two last steps once more to the plan so our mpc horizon will never run out 
+    planner = FootStepPlanner(conf)         # Create the planner
+    plan = planner.planLine(T_support_w, Side.RIGHT, no_steps)      # Create the plan
+    # Append the two last steps once more to the plan so our mpc horizon will never run out 
     # plan.append(plan[-2:])
     plan.extend(plan[-2:])
     foot_trajectory = SwingFootTrajectory(T_swing_w, plan[2].pose, conf.step_dur)
 
 
     # generate reference
-    ZMP_ref = generate_zmp_reference(plan, conf.no_mpc_samples_per_step)      #>>>>TODO: Generate the mpc reference
-    #>>>>TODO: plot the plan (make sure this workes first)
+    ZMP_ref = generate_zmp_reference(plan, conf.no_mpc_samples_per_step)      # Generate the mpc reference
+    # plot the plan (make sure this workes first)
     planner.plot(simulator)
     
     # setup the lip models
-    mpc = LIPMPC(conf)      #>>>>TODO: setup mpc
+    mpc = LIPMPC(conf)      # setup mpc
     
     # Assume the com is over the first support foot
-    #>>>>TODO: Build the intial mpc state vector
+    # Build the intial mpc state vector
     # x0 = [p_x, v_x, p_y, v_y]
     x0 = np.array([T_support_w.translation[0], 0, T_support_w.translation[1], 0])
 
-    #>>>>TODO: Create the interpolator and set the inital state
+    # Create the interpolator and set the inital state
     interpolator = LIPInterpolator(x0, conf)
     
     # set the com task over the support foot
     c, c_dot, c_ddot = interpolator.comState()
-    #>>>>TODO: Set the COM reference to be over supporting foot 
+    # Set the COM reference to be over supporting foot 
     robot.stack.setComRefState(c, c_dot, c_ddot)
 
     
@@ -85,11 +84,11 @@ def main():
     ############################################################################
 
     pre_dur = 3.0   # Time to wait befor walking should start
-    N_pre = int(pre_dur / conf.dt)                      #>>>>TODO: number of sim steps before walking starts 
-    N_sim = int(no_steps * conf.step_dur / conf.dt)     #>>>>TODO: total number of sim steps during walking
-    N_mpc = int(N_sim / conf.no_sim_per_mpc)            #>>>>TODO: total number of mpc steps during walking
+    N_pre = int(pre_dur / conf.dt)                      # number of sim steps before walking starts 
+    N_sim = int(no_steps * conf.step_dur / conf.dt)     # total number of sim steps during walking
+    N_mpc = int(N_sim / conf.no_sim_per_mpc)            # total number of mpc steps during walking
     
-    #>>>>TODO: Create vectors to log all the data of the simulation
+    # Create vectors to log all the data of the simulation
     # - COM_POS, COM_VEL, COM_ACC (from the planned reference, pinocchio and pybullet)
     # - Angular momentum (from pinocchio)
     # - Left and right foot POS, VEL, ACC (form planned reference, pinocchio) 
@@ -140,16 +139,16 @@ def main():
     t_publish = 0.0                                     # last publish time (last time we published something)
     
     for i in range(-N_pre, N_sim):
-        t = simulator.simTime()     #>>>>TODO: simulator time
-        dt = simulator.stepTime()   #>>>>TODO: simulator dt
+        t = simulator.simTime()     # simulator time
+        dt = simulator.stepTime()   # simulator dt
         
         ########################################################################
         # update the mpc very no_sim_per_mpc steps
         ########################################################################
             
-        #>>>>TODO: when to update mpc
+        # when to update mpc
         if i >= 0 and (i % conf.no_sim_per_mpc == 0):        
-            #>>>>TODO: Implement MPC update
+            # Implement MPC update
             x_k = interpolator.x
             terminal_idx = k + conf.no_mpc_samples_per_horizon*2
             ZMP_ref_k = ZMP_ref[k:k+terminal_idx]
@@ -162,9 +161,9 @@ def main():
         ########################################################################
 
 
-        #>>>>TODO: when to update spline
+        # when to update spline
         if i >= 0 and (i % conf.no_sim_per_step == 0):
-            #>>>>TODO: Start next step
+            # Start next step
             target_step = plan[plan_idx]
             robot.setSwingFoot(target_step.side)
 
@@ -194,21 +193,21 @@ def main():
         # update the simulation
         ########################################################################
 
-        #>>>>TODO: update the simulator and the robot
+        # update the simulator and the robot
         simulator.step()
         robot.update()
 
         # publish to ros
         if t - t_publish > 1./30.:
             t_publish = t
-            #>>>>TODO: publish
+            # publish
             # T_b_w = robot.robot.baseCoMPosition()
             robot.publish()
             
         # store for visualizations
         if i >= 0:
             TIME[i] = t
-            #>>>>TODO: log information
+            # log information
             time.append(t)
 
             #print(time[-1])
@@ -271,7 +270,7 @@ def main():
 
     #print(com_pin.shape, com_pb.shape, com_ref.shape)
 
-    #>>>>TODO: plot everything
+    # plot everything
 
     #################################################
     #                 CoM Position                  #

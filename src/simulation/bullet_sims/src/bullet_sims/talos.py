@@ -287,32 +287,57 @@ class Talos:
         """
         Publishes the wrenches for the left and right feet.
         """
-        wrench_left = pb.getJointState(self.robot.id(), self.robot.jointNameIndexMap()['leg_left_6_joint'])[2]
-        wrench_right = pb.getJointState(self.robot.id(), self.robot.jointNameIndexMap()['leg_right_6_joint'])[2]
+        # wrench_left = pb.getJointState(self.robot.id(), self.robot.jointNameIndexMap()['leg_left_6_joint'])[2]
+        # wrench_right = pb.getJointState(self.robot.id(), self.robot.jointNameIndexMap()['leg_right_6_joint'])[2]
 
-        wrench_left_msg = WrenchStamped()
-        wrench_left_msg.header = Header()
-        wrench_left_msg.header.stamp = rospy.Time.now()
-        wrench_left_msg.header.frame_id = 'leg_left_6_link'
-        wrench_left_msg.wrench.force.x = wrench_left[0]
-        wrench_left_msg.wrench.force.y = wrench_left[1]
-        wrench_left_msg.wrench.force.z = wrench_left[2]
-        wrench_left_msg.wrench.torque.x = wrench_left[3]
-        wrench_left_msg.wrench.torque.y = wrench_left[4]
-        wrench_left_msg.wrench.torque.z = wrench_left[5]
-        self.pub_wrench_left.publish(wrench_left_msg)
+        # wrench_left_msg = WrenchStamped()
+        # wrench_left_msg.header = Header()
+        # wrench_left_msg.header.stamp = rospy.Time.now()
+        # wrench_left_msg.header.frame_id = 'leg_left_6_link'
+        # wrench_left_msg.wrench.force.x = wrench_left[0]
+        # wrench_left_msg.wrench.force.y = wrench_left[1]
+        # wrench_left_msg.wrench.force.z = wrench_left[2]
+        # wrench_left_msg.wrench.torque.x = wrench_left[3]
+        # wrench_left_msg.wrench.torque.y = wrench_left[4]
+        # wrench_left_msg.wrench.torque.z = wrench_left[5]
+        # self.pub_wrench_left.publish(wrench_left_msg)
 
-        wrench_right_msg = WrenchStamped()
-        wrench_right_msg.header = Header()
-        wrench_right_msg.header.stamp = rospy.Time.now()
-        wrench_right_msg.header.frame_id = 'leg_right_6_link'
-        wrench_right_msg.wrench.force.x = wrench_right[0]
-        wrench_right_msg.wrench.force.y = wrench_right[1]
-        wrench_right_msg.wrench.force.z = wrench_right[2]
-        wrench_right_msg.wrench.torque.x = wrench_right[3]
-        wrench_right_msg.wrench.torque.y = wrench_right[4]
-        wrench_right_msg.wrench.torque.z = wrench_right[5]
-        self.pub_wrench_right.publish(wrench_right_msg)
+        wrench_r_ankle, wrench_l_ankle = self.record_ankle_wrenches()
+        if wrench_l_ankle is not None:
+            ws = WrenchStamped()
+            ws.header.stamp = rospy.Time.now()
+            ws.header.frame_id = "leg_left_6_link"
+            ws.wrench.force.x = wrench_l_ankle.linear[0]
+            ws.wrench.force.y = wrench_l_ankle.linear[1]
+            ws.wrench.force.z = wrench_l_ankle.linear[2]
+            ws.wrench.torque.x = wrench_l_ankle.angular[0]
+            ws.wrench.torque.y = wrench_l_ankle.angular[1]
+            ws.wrench.torque.z = wrench_l_ankle.angular[2]
+            self.pub_wrench_left.publish(ws)
+
+
+        # wrench_right_msg = WrenchStamped()
+        # wrench_right_msg.header = Header()
+        # wrench_right_msg.header.stamp = rospy.Time.now()
+        # wrench_right_msg.header.frame_id = 'leg_right_6_link'
+        # wrench_right_msg.wrench.force.x = wrench_right[0]
+        # wrench_right_msg.wrench.force.y = wrench_right[1]
+        # wrench_right_msg.wrench.force.z = wrench_right[2]
+        # wrench_right_msg.wrench.torque.x = wrench_right[3]
+        # wrench_right_msg.wrench.torque.y = wrench_right[4]
+        # wrench_right_msg.wrench.torque.z = wrench_right[5]
+        # self.pub_wrench_right.publish(wrench_right_msg)
+        if wrench_r_ankle is not None:
+            ws = WrenchStamped()
+            ws.header.stamp = rospy.Time.now()
+            ws.header.frame_id = "leg_right_6_link"
+            ws.wrench.force.x = wrench_r_ankle.linear[0]
+            ws.wrench.force.y = wrench_r_ankle.linear[1]
+            ws.wrench.force.z = wrench_r_ankle.linear[2]
+            ws.wrench.torque.x = wrench_r_ankle.angular[0]
+            ws.wrench.torque.y = wrench_r_ankle.angular[1]
+            ws.wrench.torque.z = wrench_r_ankle.angular[2]
+            self.pub_wrench_right.publish(ws)
 
 
     def publish_dcm_zmp_markers(self):
@@ -328,9 +353,9 @@ class Talos:
         zmp_marker.pose.position.x = self.zmp[0]
         zmp_marker.pose.position.y = self.zmp[1]
         zmp_marker.pose.position.z = 0.0
-        zmp_marker.scale.x = 0.05
-        zmp_marker.scale.y = 0.05
-        zmp_marker.scale.z = 0.05
+        zmp_marker.scale.x = 0.01
+        zmp_marker.scale.y = 0.01
+        zmp_marker.scale.z = 0.01
         zmp_marker.color.a = 1.0
         zmp_marker.color.r = 1.0
         zmp_marker.color.g = 0.0
@@ -345,9 +370,9 @@ class Talos:
         dcm_marker.pose.position.x = self.dcm[0]
         dcm_marker.pose.position.y = self.dcm[1]
         dcm_marker.pose.position.z = 0.0
-        dcm_marker.scale.x = 0.05
-        dcm_marker.scale.y = 0.05
-        dcm_marker.scale.z = 0.05
+        dcm_marker.scale.x = 0.01
+        dcm_marker.scale.y = 0.01
+        dcm_marker.scale.z = 0.01
         dcm_marker.color.a = 1.0
         dcm_marker.color.r = 0.0
         dcm_marker.color.g = 1.0
@@ -445,29 +470,32 @@ class Talos:
         # f_x_right: [force] measured by the [right] ankle-[x]
         # tau_x_right: [torque] measured by the [right] ankle-[x]
 
-        # Ankle-Frame
         wr_rankle, wl_lankle = self.record_ankle_wrenches()
-
-        f_x_right, f_y_right, f_z_right = wr_rankle.linear[0], wr_rankle.linear[1], wr_rankle.linear[2]
-        tau_x_right, tau_y_right, tau_z_right = wr_rankle.angular[0], wr_rankle.angular[1], wr_rankle.angular[2]
-        f_x_left, f_y_left, f_z_left = wl_lankle.linear[0], wl_lankle.linear[1], wl_lankle.linear[2]
-        tau_x_left, tau_y_left, tau_z_left = wl_lankle.angular[0], wl_lankle.angular[1], wl_lankle.angular[2]
-
-        p_x_right = ( - tau_y_right - f_x_right * d) / f_z_right
-        p_y_right = (tau_x_right - f_y_right * d) / f_z_right
-        p_x_left = ( - tau_y_left - f_x_left * d) / f_z_left
-        p_y_left = (tau_x_left - f_y_left * d) / f_z_left
-
-        # World-Frame
         H_w_lsole, H_w_rsole, H_w_lankle, H_w_rankle = self.record_ankle_positions()
-        # p_x_right, p_y_right, _ = H_w_rsole.inverse() @ [p_x_right, p_y_right, 0]
-        p_x_right, p_y_right, _, _ = (np.linalg.inv(H_w_rsole) @ [p_x_right, p_y_right, 0, 1])
-        p_x_left, p_y_left, _, _ = (np.linalg.inv(H_w_lsole) @ [p_x_left, p_y_left, 0, 1])
 
-        p_x = (p_x_right * f_z_right + p_x_left * f_z_left) / (f_z_right + f_z_left)
-        p_y = (p_y_right * f_z_right + p_y_left * f_z_left) / (f_z_right + f_z_left)
-        ZMP = np.array([p_x, p_y])
-        return ZMP
+        f_r = wr_rankle.linear
+        t_r = wr_rankle.angular
+        d_r = (H_w_rankle.translation - H_w_rsole.translation)[2]
+        ZMP_r_sole = np.array([(-t_r[1] - f_r[0] * d_r)/ f_r[2],
+                            (t_r[0] - f_r[1] * d_r)/ f_r[2], 
+                            0])
+        ZMP_r = H_w_rsole * ZMP_r_sole
+        
+        f_l = wl_lankle.linear
+        t_l = wl_lankle.angular
+        d_l = (H_w_lankle.translation - H_w_lsole.translation)[2]
+        ZMP_l_sole = np.array([(-t_l[1] - f_l[0] * d_l)/ f_l[2],
+                            (t_l[0] - f_l[1] * d_l)/ f_l[2], 
+                            0])
+        ZMP_l = H_w_lsole * ZMP_l_sole
+
+        ZMP_all = np.array([(ZMP_r[0] * f_r[2] + ZMP_l[0] * f_l[2])/ (f_r[2] + f_l[2]),
+                            (ZMP_r[1] * f_r[2] + ZMP_l[1] * f_l[2])/ (f_r[2] + f_l[2]),
+                            0])
+
+        return ZMP_all
+    
+
 
     def compute_DCM(self, g=9.81):
         """
