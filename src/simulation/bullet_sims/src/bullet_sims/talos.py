@@ -328,13 +328,14 @@ class Talos:
         zmp_marker.pose.position.x = self.zmp[0]
         zmp_marker.pose.position.y = self.zmp[1]
         zmp_marker.pose.position.z = 0.0
-        zmp_marker.scale.x = 0.01
-        zmp_marker.scale.y = 0.01
-        zmp_marker.scale.z = 0.01
+        zmp_marker.pose.orientation.w = 1.0
+        zmp_marker.scale.x = 0.015
+        zmp_marker.scale.y = 0.015
+        zmp_marker.scale.z = 0.015
         zmp_marker.color.a = 1.0
-        zmp_marker.color.r = 1.0
+        zmp_marker.color.r = 0.0
         zmp_marker.color.g = 0.0
-        zmp_marker.color.b = 0.0
+        zmp_marker.color.b = 1.0
 
         zmp_left = Marker()
         zmp_left.header = Header()
@@ -345,6 +346,7 @@ class Talos:
         zmp_left.pose.position.x = self.zmp_left[0]
         zmp_left.pose.position.y = self.zmp_left[1]
         zmp_left.pose.position.z = 0.0
+        zmp_left.pose.orientation.w = 1.0
         zmp_left.scale.x = 0.01
         zmp_left.scale.y = 0.01
         zmp_left.scale.z = 0.01
@@ -362,6 +364,7 @@ class Talos:
         zmp_right.pose.position.x = self.zmp_right[0]
         zmp_right.pose.position.y = self.zmp_right[1]
         zmp_right.pose.position.z = 0.0
+        zmp_right.pose.orientation.w = 1.0
         zmp_right.scale.x = 0.01
         zmp_right.scale.y = 0.01
         zmp_right.scale.z = 0.01
@@ -379,9 +382,9 @@ class Talos:
         dcm_marker.pose.position.x = self.dcm[0]
         dcm_marker.pose.position.y = self.dcm[1]
         dcm_marker.pose.position.z = 0.0
-        dcm_marker.scale.x = 0.01
-        dcm_marker.scale.y = 0.01
-        dcm_marker.scale.z = 0.01
+        dcm_marker.scale.x = 0.015
+        dcm_marker.scale.y = 0.015
+        dcm_marker.scale.z = 0.015
         dcm_marker.color.a = 1.0
         dcm_marker.color.r = 0.0
         dcm_marker.color.g = 1.0
@@ -481,7 +484,6 @@ class Talos:
         # wr_rankle: right ankle wrench
         # f_x_right: [force] measured by the [right] ankle-[x]
         # tau_x_right: [torque] measured by the [right] ankle-[x]
-
         wr_rankle, wl_lankle = self.record_ankle_wrenches()
         H_w_lsole, H_w_rsole, H_w_lankle, H_w_rankle = self.record_ankle_positions()
 
