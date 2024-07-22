@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+    <param name="robot_description" command="cat $(find talos_description)/robots/talos_reduced_no_hands.urdf" />
+   
+    <node name="main_node" pkg="control_main" type="walk_tutorial.py" output="screen" required="true"/>
+
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find ros_visuals)/rviz/talos.rviz" required="true" />
+</launch>
