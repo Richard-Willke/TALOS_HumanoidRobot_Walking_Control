@@ -86,7 +86,7 @@ class Talos:
         ########################################################################
         # estimators
         ########################################################################
-        self.zmp = self.compute_ZMP()
+        self.zmp, self.zmp_left, self.zmp_right = self.compute_ZMP()
         self.dcm = self.compute_DCM()
         
         ########################################################################
@@ -287,20 +287,6 @@ class Talos:
         """
         Publishes the wrenches for the left and right feet.
         """
-        # wrench_left = pb.getJointState(self.robot.id(), self.robot.jointNameIndexMap()['leg_left_6_joint'])[2]
-        # wrench_right = pb.getJointState(self.robot.id(), self.robot.jointNameIndexMap()['leg_right_6_joint'])[2]
-
-        # wrench_left_msg = WrenchStamped()
-        # wrench_left_msg.header = Header()
-        # wrench_left_msg.header.stamp = rospy.Time.now()
-        # wrench_left_msg.header.frame_id = 'leg_left_6_link'
-        # wrench_left_msg.wrench.force.x = wrench_left[0]
-        # wrench_left_msg.wrench.force.y = wrench_left[1]
-        # wrench_left_msg.wrench.force.z = wrench_left[2]
-        # wrench_left_msg.wrench.torque.x = wrench_left[3]
-        # wrench_left_msg.wrench.torque.y = wrench_left[4]
-        # wrench_left_msg.wrench.torque.z = wrench_left[5]
-        # self.pub_wrench_left.publish(wrench_left_msg)
 
         wrench_r_ankle, wrench_l_ankle = self.record_ankle_wrenches()
         if wrench_l_ankle is not None:
@@ -316,17 +302,6 @@ class Talos:
             self.pub_wrench_left.publish(ws)
 
 
-        # wrench_right_msg = WrenchStamped()
-        # wrench_right_msg.header = Header()
-        # wrench_right_msg.header.stamp = rospy.Time.now()
-        # wrench_right_msg.header.frame_id = 'leg_right_6_link'
-        # wrench_right_msg.wrench.force.x = wrench_right[0]
-        # wrench_right_msg.wrench.force.y = wrench_right[1]
-        # wrench_right_msg.wrench.force.z = wrench_right[2]
-        # wrench_right_msg.wrench.torque.x = wrench_right[3]
-        # wrench_right_msg.wrench.torque.y = wrench_right[4]
-        # wrench_right_msg.wrench.torque.z = wrench_right[5]
-        # self.pub_wrench_right.publish(wrench_right_msg)
         if wrench_r_ankle is not None:
             ws = WrenchStamped()
             ws.header.stamp = rospy.Time.now()
@@ -361,6 +336,40 @@ class Talos:
         zmp_marker.color.g = 0.0
         zmp_marker.color.b = 0.0
 
+        zmp_left = Marker()
+        zmp_left.header = Header()
+        zmp_left.header.stamp = rospy.Time.now()
+        zmp_left.header.frame_id = 'world'
+        zmp_left.id = 3
+        zmp_left.type = Marker.SPHERE
+        zmp_left.pose.position.x = self.zmp_left[0]
+        zmp_left.pose.position.y = self.zmp_left[1]
+        zmp_left.pose.position.z = 0.0
+        zmp_left.scale.x = 0.01
+        zmp_left.scale.y = 0.01
+        zmp_left.scale.z = 0.01
+        zmp_left.color.a = 0.5
+        zmp_left.color.r = 0.0
+        zmp_left.color.g = 0.0
+        zmp_left.color.b = 1.0
+
+        zmp_right = Marker()
+        zmp_right.header = Header()
+        zmp_right.header.stamp = rospy.Time.now()
+        zmp_right.header.frame_id = 'world'
+        zmp_right.id = 4
+        zmp_right.type = Marker.SPHERE
+        zmp_right.pose.position.x = self.zmp_right[0]
+        zmp_right.pose.position.y = self.zmp_right[1]
+        zmp_right.pose.position.z = 0.0
+        zmp_right.scale.x = 0.01
+        zmp_right.scale.y = 0.01
+        zmp_right.scale.z = 0.01
+        zmp_right.color.a = 0.5
+        zmp_right.color.r = 0.0
+        zmp_right.color.g = 0.0
+        zmp_right.color.b = 1.0
+
         dcm_marker = Marker()
         dcm_marker.header = Header()
         dcm_marker.header.stamp = rospy.Time.now()
@@ -381,6 +390,8 @@ class Talos:
         marker_array = MarkerArray()
         marker_array.markers.append(zmp_marker)
         marker_array.markers.append(dcm_marker)
+        marker_array.markers.append(zmp_left)
+        marker_array.markers.append(zmp_right)
         self.pub_zmp_dcm.publish(marker_array)
 
     
@@ -410,7 +421,8 @@ class Talos:
     def _update_zmp_estimate(self):
         """update the estimated zmp position. Shape (2,)
         """
-        self.zmp = self.compute_ZMP()
+        # self.zmp = self.compute_ZMP()
+        self.zmp, self.zmp_left, self.zmp_right = self.compute_ZMP()
 
         
     def _update_dcm_estimate(self):
@@ -493,7 +505,8 @@ class Talos:
                             (ZMP_r[1] * f_r[2] + ZMP_l[1] * f_l[2])/ (f_r[2] + f_l[2]),
                             0])
 
-        return ZMP_all
+        # return ZMP_all
+        return ZMP_all, ZMP_l, ZMP_r
     
 
 

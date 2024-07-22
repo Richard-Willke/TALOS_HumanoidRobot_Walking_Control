@@ -210,8 +210,6 @@ def main():
             # log information
             time.append(t)
 
-            #print(time[-1])
-
             com_pin.append(robot.stack.comState().value())
             com_pb.append(robot.robot.baseCoMPosition())
             com_ref.append(robot.stack.comReference().value().copy())
