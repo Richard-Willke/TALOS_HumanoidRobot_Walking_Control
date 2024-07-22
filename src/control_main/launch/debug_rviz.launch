@@ -6,5 +6,5 @@
 
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
 
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find ros_visuals)/rviz/talos.rviz" required="true" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find ros_visuals)/rviz/walk_tutorial.rviz" required="true" />
 </launch>
