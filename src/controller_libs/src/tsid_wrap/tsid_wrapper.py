@@ -514,9 +514,9 @@ class TSIDWrapper:
         self.rightFootTask.setReference(self.rf_ref)
 
     def set_RF_pos_ref(self, pos, vel=None, acc=None):
-        X = self.rf_ref.pos(); X[:3] = pos
-        V = self.rf_ref.vel(); V[:3] = vel
-        A = self.rf_ref.acc(); A[:3] = acc
+        X = self.rf_ref.value(); X[:3] = pos
+        V = self.rf_ref.derivative(); V[:3] = vel
+        A = self.rf_ref.second_derivative(); A[:3] = acc
         update_sample(self.rf_ref, X, V, A)
         self.rightFootTask.setReference(self.rf_ref)
 
@@ -524,20 +524,12 @@ class TSIDWrapper:
         update_sample(self.lf_ref, pose, vel, acc)
         self.leftFootTask.setReference(self.lf_ref)
 
-    # NOTE: fix bug
-    # def set_LF_pos_ref(self, pos, vel=None, acc=None):
-    #     X = self.lf_ref.pos(); X[:3] = pos
-    #     V = self.lf_ref.vel(); V[:3] = vel
-    #     A = self.lf_ref.acc(); A[:3] = acc
-    #     update_sample(self.lf_ref, X, V, A)
-    #     self.leftFootTask.setReference(self.lf_ref)
     def set_LF_pos_ref(self, pos, vel=None, acc=None):
         X = self.lf_ref.value(); X[:3] = pos
         V = self.lf_ref.derivative(); V[:3] = vel
         A = self.lf_ref.second_derivative(); A[:3] = acc
         update_sample(self.lf_ref, X, V, A)
         self.leftFootTask.setReference(self.lf_ref)
-
 
     def set_RH_pose_ref(self, pose, vel=None, acc=None):
         update_sample(self.rh_ref, pose, vel, acc)

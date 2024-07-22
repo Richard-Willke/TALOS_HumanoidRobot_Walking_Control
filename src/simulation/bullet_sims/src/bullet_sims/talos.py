@@ -1,34 +1,10 @@
 """
-Provides various helper functions and classes for simulating and controlling the Talos robot using the whole-body controller (WBC) and pybullet.
-
-Classes:
-    Talos: Class representing the Talos robot, combining WBC with pybullet, and providing functions to read and set sensor values.
-
-Methods:
-    __init__: Initializes the Talos robot in the given simulator.
-    update: Updates the robot state, estimators, and WBC.
-    setSupportFoot: Sets the support foot of the robot on the given side.
-    setSwingFoot: Sets the swing foot of the robot on the given side.
-    updateSwingFootRef: Updates the swing foot motion reference.
-    swingFootPose: Returns the pose of the current swing foot.
-    supportFootPose: Returns the pose of the current support foot.
-    publish: Publishes various ROS topics for visualization.
-    publish_joint_states: Publishes the joint states of the robot.
-    publish_base_link: Publishes the base link transform.
-    publish_wrenches: Publishes the wrenches for the left and right feet.
-    publish_dcm_zmp_markers: Publishes DCM and ZMP markers for visualization.
-    _solve: Solves the WBC and commands the torque to the pybullet robot.
-    _update_zmp_estimate: Updates the estimated ZMP position.
-    _update_dcm_estimate: Updates the estimated DCM position.
-    record_ankle_wrenches: Records the ankle wrenches.
-    record_ankle_positions: Records the ankle positions.
-    compute_ZMP: Computes the ZMP based on force torque sensor readings.
-    compute_DCM: Computes the DCM based on the current center of mass state.
+Provides the Talos class for the Talos robot simulation.
 """
-
 #!/usr/bin/env python3
 import numpy as np
 import pinocchio as pin
+from typing import Type, TypeVar
 
 # simulator
 from simulator.robot import Robot
@@ -37,8 +13,6 @@ from simulator.robot import Robot
 from tsid_wrap.tsid_wrapper import TSIDWrapper
 
 # robot configs
-# from walking_control import talos_conf as conf
-# import talos_conf as conf
 from bullet_sims import talos_conf as conf
 
 # footstep_planner
@@ -60,9 +34,6 @@ import tf
 class Talos:
     """
     Talos robot class combining whole-body control with pybullet simulation, and provides functions to read and set sensor values.
-
-    Args:
-        simulator: The simulation environment.
 
     Attributes:
         conf: Configuration parameters.
@@ -124,7 +95,6 @@ class Talos:
         # ft sensors
         pb.enableJointForceTorqueSensor(self.robot.id(), self.robot.jointNameIndexMap()['leg_right_6_joint'], True)
         pb.enableJointForceTorqueSensor(self.robot.id(), self.robot.jointNameIndexMap()['leg_left_6_joint'], True)
-
         
         ########################################################################
         # visualizations
@@ -135,7 +105,6 @@ class Talos:
         self.pub_zmp_dcm = rospy.Publisher('/zmp_and_dcm', MarkerArray, queue_size=10)
         self.pub_wrench_left = rospy.Publisher('/wrench_left', WrenchStamped, queue_size=10)
         self.pub_wrench_right = rospy.Publisher('/wrench_right', WrenchStamped, queue_size=10)
-           
     
     ###########################################################################################
     #                                         Update                                          #
@@ -196,16 +165,16 @@ class Talos:
             self.stack.add_contact_LF()
 
         
-    def updateSwingFootRef(self, T_swing_w, V_swing_w, A_swing_w):
+    def updateSwingFootRef(self, T_swing_w: pin.SE3, V_swing_w: np.ndarray, A_swing_w: np.ndarray):
         """
         Updates the swing foot motion reference.
 
         Args:
-            T_swing_w (numpy.ndarray): Pose reference. pin.SE3(R, p)
+            T_swing_w: Pose reference. pin.SE3(R, p)
                                        Rotation Matrix R, T_swing_w.rotation, Shape (3, 3)
                                        Translation Vector p, T_swing_w.translation, Shape (3, )
-            V_swing_w (numpy.ndarray): Velocity reference. Shape (3,)
-            A_swing_w (numpy.ndarray): Acceleration reference. Shape (3,)
+            V_swing_w: Velocity reference. Shape (3,)
+            A_swing_w: Acceleration reference. Shape (3,)
         """        
         if self.swing_foot == Side.LEFT:
             self.stack.set_LF_pos_ref(T_swing_w, V_swing_w, A_swing_w)
