@@ -1,0 +1,5 @@
+<launch>
+    <!-- This is used for VSCode ROS plugin debugging -->
+    <node name="debug" pkg="control_main" type="walk_tutorial.py" output="screen">
+    </node>
+</launch>
