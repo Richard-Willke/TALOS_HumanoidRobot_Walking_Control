@@ -48,11 +48,11 @@ def main():
                                
     
     # setup the plan
-    no_steps = 20
-    planner = FootStepPlanner()         #>>>>TODO: Create the planner
-    plan = planner.plan_steps(T_support_w, Side.RIGHT, no_steps, 0, walking_start=True, walking_stop=True)      #>>>>TODO: Create the plan
-    #>>>>TODO: Append the two last steps once more to the plan so our mpc horizon will never run out 
-    # plan.append(plan[-2:])
+    no_steps = 10
+    planner = FootStepPlanner(conf.step_size_x, conf.step_size_y, conf.lfxp, conf.lfxn, conf.lfyp, conf.lfyn)
+    T_support_w.rotation = np.eye(3)
+    plan = planner.plan_steps(T_support_w, Side.RIGHT, no_steps, 0, walking_start=True, walking_stop=True)     
+    # Append the two last steps once more to the plan so our mpc horizon will never run out 
     plan.extend(plan[-2:])
     foot_trajectory = SwingFootTrajectory(T_swing_w, plan[2].pose, conf.step_dur)
 
@@ -165,6 +165,7 @@ def main():
         if i >= 0 and (i % conf.no_sim_per_step == 0):
             # Start next step
             target_step = plan[plan_idx]
+            robot.contactSwingFoot()
             robot.setSwingFoot(target_step.side)
 
             T_swing_pose_current = robot.swingFootPose()
@@ -252,7 +253,7 @@ def main():
     ########################################################################
     
     import matplotlib.pyplot as plt
-    plt.style.use('seaborn-dark')
+    plt.style.use('seaborn-v0_8-dark')
     
     com_pin = np.array(com_pin).T
     com_pb = np.array(com_pb).T
@@ -355,7 +356,7 @@ def main():
     #################################################
     figure_ZMP, ax_ZMP = plt.subplots(2, 1)
     ax_ZMP[0].plot(time, np.array(ZMP_plan)[:,0], linestyle=':', label='ZMP Ref 0')
-    ax_ZMP[0].plot(time, - np.array(ZMP_est)[:,0] , label='ZMP PB 0')
+    ax_ZMP[0].plot(time, np.array(ZMP_est)[:,0] , label='ZMP PB 0')
 
     ax_ZMP[1].plot(time, np.array(ZMP_plan)[:,1], linestyle=':', label='ZMP Ref 1')
     ax_ZMP[1].plot(time, np.array(ZMP_est)[:,1], label='ZMP PB 1')
@@ -470,16 +471,7 @@ def main():
     #                   Plot Show                   #
     #################################################
     plt.tight_layout()
-    plt.show(figure_pos)
-    plt.show(figure_vel)
-    plt.show(figure_acc)
-    plt.show(figure_ZMP)
-    plt.show(figure_DCM)
-    plt.show(figure_force_normal)
-    plt.show(figure_feet_pos)
-    plt.show(figure_feet_vel)
-    plt.show(figure_feet_acc)
-    plt.show(figure_angular)
+    plt.show(block=True)
 
 
 
