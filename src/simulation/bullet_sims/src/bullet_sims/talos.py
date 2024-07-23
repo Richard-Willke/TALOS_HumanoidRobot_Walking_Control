@@ -16,7 +16,7 @@ from tsid_wrap.tsid_wrapper import TSIDWrapper
 from bullet_sims import talos_conf as conf
 
 # footstep_planner
-from foot_plan.footstep_planner import Side
+from foot_plan.footstep_planner import Side, other_foot_id
 
 # ROS visualizations
 import rospy
@@ -131,38 +131,50 @@ class Talos:
     ###########################################################################################
     #                                          Foot                                           #
     ###########################################################################################
-    def setSupportFoot(self, side):
-        """
-        Sets the support foot of the robot on the given side.
-
-        Args:
-            side (Side): The side (LEFT or RIGHT) to set as the support foot.
-        """        
-        self.support_foot = side
-
-        if self.support_foot == Side.LEFT:
-            self.stack.add_contact_LF()
-            self.stack.remove_contact_RF()
-        elif self.support_foot == Side.RIGHT:
-            self.stack.add_contact_RF()
-            self.stack.remove_contact_LF()
-
-    
     def setSwingFoot(self, side):
         """
-        Sets the swing foot of the robot on the given side.
+        Sets the swing foot of the robot on the given side. 
+        This automatically lift that foot with the ground. As well as set the support foot on the other side.
+        Calling: 
+                                  setSwingFoot          contactSwingFoot
+               doublesupportphase   ---------  Swingphase   -------   doublesupportphase 
 
         Args:
             side (Side): The side (LEFT or RIGHT) to set as the swing foot.
-        """
+        """        
         self.swing_foot = side
+        self.support_foot = other_foot_id(side)
         
         if self.swing_foot == Side.LEFT:
             self.stack.remove_contact_LF()
-            self.stack.add_contact_RF()
         elif self.swing_foot == Side.RIGHT:
             self.stack.remove_contact_RF()
+
+    # def setSupportFoot(self, side):
+    #     """
+    #     Sets the support foot of the robot on the given side. 
+    #     This automatically contacts that foot with the ground. As well as set the swing foot on the other side.
+    #     Notice: do not use setSwingFoot and setSupportFoot together, it will cause conflict.
+ 
+    #     Args:
+    #         side (Side): The side (LEFT or RIGHT) to set as the support foot.
+    #     """        
+    #     self.support_foot = side
+    #     self.swing_foot = other_foot_id(side)
+
+    #     if self.support_foot == Side.LEFT:
+    #         self.stack.add_contact_LF()
+    #     elif self.support_foot == Side.RIGHT:
+    #         self.stack.add_contact_RF()
+    
+    def contactSwingFoot(self):
+        """
+        Sets the swing foot of the robot on the given side.
+        """
+        if self.swing_foot == Side.LEFT:
             self.stack.add_contact_LF()
+        elif self.swing_foot == Side.RIGHT:
+            self.stack.add_contact_RF()
 
         
     def updateSwingFootRef(self, T_swing_w: pin.SE3, V_swing_w: np.ndarray, A_swing_w: np.ndarray):
@@ -171,8 +183,6 @@ class Talos:
 
         Args:
             T_swing_w: Pose reference. pin.SE3(R, p)
-                                       Rotation Matrix R, T_swing_w.rotation, Shape (3, 3)
-                                       Translation Vector p, T_swing_w.translation, Shape (3, )
             V_swing_w: Velocity reference. Shape (3,)
             A_swing_w: Acceleration reference. Shape (3,)
         """        
@@ -382,6 +392,7 @@ class Talos:
         dcm_marker.pose.position.x = self.dcm[0]
         dcm_marker.pose.position.y = self.dcm[1]
         dcm_marker.pose.position.z = 0.0
+        dcm_marker.pose.orientation.w = 1.0
         dcm_marker.scale.x = 0.015
         dcm_marker.scale.y = 0.015
         dcm_marker.scale.z = 0.015
