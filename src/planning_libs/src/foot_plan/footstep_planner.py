@@ -43,7 +43,7 @@ class FootStep:
         """
         # check if the z axis of the pose is pointing upwards
         if not np.allclose(pose.rotation[:, 2], np.array([0, 0, 1]), atol=1e-4):
-            print("[ Warning ]: The z-axis of the pose is not pointing upwards.\n", pose)
+            print("[ Warning ]: FootStep().__init__: The z-axis of the pose is not pointing upwards.\n", pose)
         self.pose = pose
         self.footprint_array = footprint_array
         self.side = side
@@ -56,7 +56,22 @@ class FootStep:
         Returns:
             pose (pin.SE3): the pose of the footstep in the world frame
         """
-        return self.pose
+        return pin.SE3(self.pose)
+    
+    def get_center_pose(self):
+        """ Return the center pose of the footstep. This is used better for ZMP references or plotting, but is
+        not necessary the coordinate of the footstep.
+        
+        Args:
+            None
+
+        Returns:
+            zmp (pin.SE3): the Zero Moment Point of the footstep
+        """
+        center_pose = self.get_pose()
+        rect_offset = np.array([(self.footprint_array[0] - self.footprint_array[1])/2, (self.footprint_array[2] - self.footprint_array[3])/2, 0])
+        center_pose.translation =  center_pose.translation - self.pose.rotation @ rect_offset
+        return center_pose
         
     def plot(self, simulation: PybulletWrapper, id: int):
         """Plot the footstep in the pybullet simulation. (For initial debugging, deprecated)
@@ -76,8 +91,7 @@ class FootStep:
 
         # plot in pybullet: recangular footprint in wolrd coordinate frame
         rect_size = [self.footprint_array[0]+self.footprint_array[1], self.footprint_array[2]+self.footprint_array[3]]
-        rect_offset = np.array([(self.footprint_array[0] - self.footprint_array[1])/2, (self.footprint_array[2] - self.footprint_array[3])/2, 0])
-        simulation.addGlobalDebugRectancle(x - self.pose.rotation @ rect_offset, q, rect_size[0], rect_size[1])
+        simulation.addGlobalDebugRectancle(self.get_center_pose().translation, q, rect_size[0], rect_size[1])
 
         # plot in pybuttet: mark the positive x direction of the footstep
         simulation.addGlobalDebugLine(x, x + self.footprint_array[1]*self.pose.rotation[:, 0], lineWidth=2)
@@ -94,7 +108,7 @@ class FootStep:
 class FootStepPlanner:
     """Creates footstep plans (list of right and left steps) for the robot to follow."""
     
-    def __init__(self, step_size_x: float = 0.20, step_size_y: float = 0.096, lfxp: float = 0.12, lfxn: float = 0.08, lfyp: float = 0.065, lfyn: float = 0.065):
+    def __init__(self, step_size_x: float, step_size_y: float, lfxp: float, lfxn: float, lfyp: float, lfyn: float):
         """constructor of the FootStepPlanner
 
         [Notice]: here the x direction is the LOCAL forward direction of the robot.
