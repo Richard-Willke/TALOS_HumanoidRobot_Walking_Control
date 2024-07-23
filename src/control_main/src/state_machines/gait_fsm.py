@@ -15,69 +15,71 @@ class GaitFSM():
     A class that manage the gait with a finite state machine
 
     This class automatically manage the (receding horizon) of the footstep planning queue
-      - Could output the current and next swinging footstep in use
-    For the queue input
-      - Could interrupt the footstep planning queue
-      - When the Step queue is not long enough, the reading will still automatically append to the result.
+        - Could manage the footstep queue with correct display in Pybullet
+        - Could output the next swinging foot target
+          When outputting the next swinging foot target, 
+           - it will automatically pop the current footstep
+           - it will automatically plan the next footstep if conditions are met
+           - it will output a series of footstep for MPC planning
+        - Could interrupt the footstep planning queue
     """
-    def __init__(self, n_queue: int, n_forward: int, T_support_w: pin.SE3, pb_wrapper: PybulletWrapper):
+    def __init__(self, conf, support_foot: FootStep, pb_wrapper: PybulletWrapper):
         """
         Initialize the gait finite state machine
 
         Args:
-            n_queue (int): number of footsteps minimum in the queue
-            n_forward (int): number of footsteps to plan in advance
-            T_support_w (pin.SE3): the support foot pose for initialization
-            pb_wrapper (PybulletWrapper): the pybullet wrapper for visualization
+            conf: the configuration of the talos robot 
+            support_foot: the very initial support foot pose for initialization
+            pb_wrapper: the pybullet wrapper for visualization
         """
-        self.footstepsRaw = []     # the raw footsteps for planning
-        self.footstepsFull = []    # the full footsteps for planning
+        self.footstepsList = []     # the raw footsteps for planning
+        self.stop_mode = False      # the stop mode flag
         self.pb_wrapper = pb_wrapper
-        self.updateStateParams(n_queue, n_forward)
 
-    def updateStateParams(self, n_queue: int, n_forward: int):
-        """
-        Update the state parameters for the gait
+    def next_horizon(self, step_length: float, curvature: float):
+        """Plan the next horizon
+               [[1]]            [3]
+        [[0]]->         [2]
+               |---ZMP horz-----|
+
+        Call this function: 
+        2 will be the next support foot
+        0 will be popped
+        3 will be planned for the next new step
+        [1,2,3] will be the footstep horizon for MPC
+
+        - output the next swinging foot target
+        - pop the last support foot (which is now just lifted)
+        - plan for the next new step (if it is not the stop mode)
+        - output a series of footstep for MPC planning
+
+        If the robot is not in the stop mode, [3] will be planned according to the step length and curvature.
+        If the robot is in the stop mode, nothing will be planned further ([3] is already set parallel to [2]).
 
         Args:
-            n_queue (int): number of footsteps minimum in the queue
-            n_forward (int): number of footsteps to plan in advance
-        """
-        self.n_queue = n_queue
-        self.n_forward = n_forward
-
-    def getCurrentFootStepData(self):
-        """
-        Get the current footstep (which is the first in the queue)
+            step_length: the step length
+            curvature: the step curvature
 
         Returns:
-            CurrentSwingingStep: the current swinging step
-            NextSwingingStep: the next swinging step
-        """
-        pass
-    
-    def popCurrentFootStepData(self):
-        """
-        Pop the current footstep (which is the first in the queue)
+            swing_foot_target (pin.SE3): the next swinging foot target
+            foot_horizon (list(FootStep)): the footstep horizon for MPC, including 3 footstep:
+              current support foot, current swing foot target, and the planned next footstep.
+            is_terminal (bool): whether the current support foot is the terminal footstep, which [3] is parallel to [2]
+              and nothing will be planned further.
         """
         pass
 
-    def planFootSteps(self, velocity_command: float, curvature: float, is_initial: bool, is_terminal: bool):
-        """
-        Attempt to plan the current footstep
+    def to_stop_mode(self):
+        """Set the robot to the stop mode. 
+        
+        In this case, a footstep will be planned parallel to the current support foot, and nothing will be planned further.
 
         Args:
-            velocity_command (float): the velocity command for the current footstep. If zero, it refuses to plan.
-            curvature (float): the curvature of the current footstep. Left is positive, right is negative.
-            is_initial (bool): Whether we assume current footstep is the initial footstep (have parallel step by start).
-            is_terminal (bool): Whether the current footstep is the terminal footstep (have parallel step by end).
-        """
-        pass
+            None
 
-    def interruptFootSteps(self):
+        Returns:
+            None
         """
-        Interrupt all the future footstep planning and clear the queue for a immediate stop
-        (Will replan last three steps)
-        """
+        self.stop_mode = True
         pass
 

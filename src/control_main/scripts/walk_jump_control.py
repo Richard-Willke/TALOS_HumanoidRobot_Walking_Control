@@ -35,15 +35,7 @@ def main():
     T_support_w = robot.supportFootPose()   
                                
     # setup the plan
-    no_steps = 20
-    planner = FootStepPlanner(conf)
-    plan = planner.planLine(T_support_w, Side.RIGHT, no_steps)
-    plan.extend(plan[-2:])
-    foot_trajectory = SwingFootTrajectory(T_swing_w, plan[2].pose, conf.step_dur)
-
-    # generate ZMP reference
-    ZMP_ref = generate_zmp_reference(plan, conf.no_mpc_samples_per_step)      
-    planner.plot(simulator)
+    planner = FootStepPlanner()
 
     # setup the LIPMPC and Interpolator to predict the CoM state
     mpc = LIPMPC(conf)
