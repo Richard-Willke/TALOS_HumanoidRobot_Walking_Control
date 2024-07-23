@@ -46,6 +46,11 @@ class SwingFootTrajectory:
         self.coeffs_y = self.compute_quintic_coeffs(T0.translation[1], T1.translation[1], 0, 0, 0, 0, t)
         self.coeffs_z = self.compute_quintic_coeffs_with_midpoint(T0.translation[2], T1.translation[2], 0, 0, 0, 0, t, self._height, t_mid)
 
+        # for the interpolation of the orientation, we should use exponential map and log map to interpolate
+        # We assume there are no rotations in x and y axis (could be constraint by Side object)
+        self.ang_log_z = pin.log3(T0.rotation.T @ T1.rotation)[2]
+        self.coeffs_u = self.compute_quintic_coeffs(0, self.ang_log_z, 0, 0, 0, 0, t)
+
     def compute_quintic_coeffs(self, p0, pf, v0, vf, a0, af, T):
         """compute quintic coefficients
 
@@ -136,28 +141,36 @@ class SwingFootTrajectory:
             vel(np.array): velocity
             acc(np.array): acceleration
         """
+        if t > self._duration:
+            t = self._duration
+
         pos_x = np.polyval(self.coeffs_x, t)
         pos_y = np.polyval(self.coeffs_y, t)
         pos_z = np.polyval(self.coeffs_z, t)
+        pos_u = np.polyval(self.coeffs_u, t)
 
         vel_x = np.polyval(np.polyder(self.coeffs_x), t)
         vel_y = np.polyval(np.polyder(self.coeffs_y), t)
         vel_z = np.polyval(np.polyder(self.coeffs_z), t)
+        vel_u = np.polyval(np.polyder(self.coeffs_u), t)
 
         acc_x = np.polyval(np.polyder(np.polyder(self.coeffs_x)), t)
         acc_y = np.polyval(np.polyder(np.polyder(self.coeffs_y)), t)
         acc_z = np.polyval(np.polyder(np.polyder(self.coeffs_z)), t)
+        acc_u = np.polyval(np.polyder(np.polyder(self.coeffs_u)), t)
 
-        pose = np.array([pos_x, pos_y, pos_z])
-        vel = np.array([vel_x, vel_y, vel_z])
-        acc = np.array([acc_x, acc_y, acc_z])
+        pos = np.array([pos_x, pos_y, pos_z])
+        rot = self.T0.rotation @ pin.exp3(np.array([0, 0, pos_u]))
+        pose = pin.SE3(rot, pos)
+        vel = np.array([vel_x, vel_y, vel_z, 0, 0, vel_u])
+        acc = np.array([acc_x, acc_y, acc_z, 0, 0, acc_u])
 
         self._t_elapsed = t
         return pose, vel, acc
 
 if __name__=="__main__":
     T0 = pin.SE3(np.eye(3), np.array([0, 0, 0]))
-    T1 = pin.SE3(np.eye(3), np.array([0.2, 0, 0]))
+    T1 = pin.SE3(pin.rpy.rpyToMatrix(0,0,1.5), np.array([0.2, 0, 0]))
 
     duration = 3.0
     height = 0.05
@@ -165,30 +178,44 @@ if __name__=="__main__":
     time_list = np.linspace(0, duration, 100)
 
     pos_list = []
+    ang_list = []
     vel_list = []
     acc_list = []
 
     for t in time_list:
-        pos, vel, acc = Trajectory.evaluate(t)
+        pose, vel, acc = Trajectory.evaluate(t)
+        pos = pose.translation
+        ang = pin.log3(pose.rotation)
         pos_list.append(pos)
+        ang_list.append(ang)
         vel_list.append(vel)
         acc_list.append(acc)
 
-    figure, ax = plt.subplots(3, 1, figsize=(15, 6))
-    ax[0].plot(time_list, np.array(pos_list)[:, 0], label='Pos x')
-    ax[0].plot(time_list, np.array(pos_list)[:, 1], label='Pos y')
-    ax[0].plot(time_list, np.array(pos_list)[:, 2], label='Pos z')
+    figure, ax = plt.subplots(3, 2, figsize=(15, 6))
+    ax[0][0].plot(time_list, np.array(pos_list)[:, 0], label='Pos x')
+    ax[0][0].plot(time_list, np.array(pos_list)[:, 1], label='Pos y')
+    ax[0][0].plot(time_list, np.array(pos_list)[:, 2], label='Pos z')
+    ax[0][1].plot(time_list, np.array(ang_list)[:, 0], label='Ang x')
+    ax[0][1].plot(time_list, np.array(ang_list)[:, 1], label='Ang y')
+    ax[0][1].plot(time_list, np.array(ang_list)[:, 2], label='Ang z')
+    
+    ax[1][0].plot(time_list, np.array(vel_list)[:, 0], label='Vel x')
+    ax[1][0].plot(time_list, np.array(vel_list)[:, 1], label='Vel y')
+    ax[1][0].plot(time_list, np.array(vel_list)[:, 2], label='Vel z')
+    ax[1][1].plot(time_list, np.array(vel_list)[:, 3], label='Ang Vel x')
+    ax[1][1].plot(time_list, np.array(vel_list)[:, 4], label='Ang Vel y')
+    ax[1][1].plot(time_list, np.array(vel_list)[:, 5], label='Ang Vel z')
 
-    ax[1].plot(time_list, np.array(vel_list)[:, 0], label='Vel x')
-    ax[1].plot(time_list, np.array(vel_list)[:, 1], label='Vel y')
-    ax[1].plot(time_list, np.array(vel_list)[:, 2], label='Vel z')
+    ax[2][0].plot(time_list, np.array(acc_list)[:, 0], label='Acc x')
+    ax[2][0].plot(time_list, np.array(acc_list)[:, 1], label='Acc y')
+    ax[2][0].plot(time_list, np.array(acc_list)[:, 2], label='Acc z')
+    ax[2][1].plot(time_list, np.array(acc_list)[:, 3], label='Ang Acc x')
+    ax[2][1].plot(time_list, np.array(acc_list)[:, 4], label='Ang Acc y')
+    ax[2][1].plot(time_list, np.array(acc_list)[:, 5], label='Ang Acc z')
 
-    ax[2].plot(time_list, np.array(acc_list)[:, 0], label='Acc x')
-    ax[2].plot(time_list, np.array(acc_list)[:, 1], label='Acc y')
-    ax[2].plot(time_list, np.array(acc_list)[:, 2], label='Acc z')
-
-    for ax in ax:
-        ax.legend(loc='upper right')
-        ax.grid(True)
+    for i in range(3):
+        for j in range(2):
+            ax[i][j].legend(loc='upper right')
+            ax[i][j].grid(True)
 
     plt.show()
