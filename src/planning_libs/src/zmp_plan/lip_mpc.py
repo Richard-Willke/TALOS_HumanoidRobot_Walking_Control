@@ -11,11 +11,9 @@ Classes:
     LIPMPC: Builds and solves the optimal control problem (OCP) for the LIP model.
 """
 import numpy as np
-from typing import List
 
 from pydrake.all import MathematicalProgram, Solve
-from bullet_sims import talos_conf as conf
-from foot_plan.footstep_planner import FootStep
+from foot_plan.footstep_planner import Side, FootStep, FootStepPlanner
 
 ################################################################################
 # Helper fnc
@@ -132,9 +130,9 @@ class LIPInterpolator:
                 - c_dot (numpy.ndarray): CoM velocity. Shape (3,)
                 - c_ddot (numpy.ndarray): CoM acceleration. Shape (3,)
         """
-        c = np.array([self.x[0], self.x[2], conf.h])
+        c = np.array([self.x[0], self.x[2], self.conf.h])
         c_dot = np.array([self.x[1], self.x[3], 0])
-        c_ddot = conf.g/conf.h * np.array([self.x[0] - self.u[0], 
+        c_ddot = self.conf.g/self.conf.h * np.array([self.x[0] - self.u[0], 
                                            self.x[2] - self.u[1], 
                                            0])
         return c, c_dot, c_ddot
@@ -149,7 +147,7 @@ class LIPInterpolator:
         Returns:
             numpy.ndarray: DCM vector. Shape (2,)
         """
-        omega = np.sqrt(conf.g / conf.h)
+        omega = np.sqrt(self.conf.g / self.conf.h)
         dcm = self.x[:2] + self.x[2:]/omega
         return dcm
     
@@ -164,14 +162,14 @@ class LIPInterpolator:
             numpy.ndarray: ZMP vector. Shape (3,)
         """
         c, _, c_ddot = self.comState()
-        zmp = c - conf.h/conf.g * c_ddot
+        zmp = c - self.conf.h/self.conf.g * c_ddot
         return zmp
     
 ################################################################################
 # LIPMPC
 ################################################################################
 
-def generate_zmp_reference(foot_steps: List[FootStep], no_samples_per_step: int):
+def generate_zmp_reference(foot_steps: list, no_samples_per_step: int):
     """
     Generates the ZMP reference given a sequence of footsteps. There are a
     series of of foot steps (foot_steps), and we plan to stay on the foot step for a certain
@@ -185,14 +183,36 @@ def generate_zmp_reference(foot_steps: List[FootStep], no_samples_per_step: int)
         no_samples_per_step: Number of samples per step.
 
     Returns:
-        list: ZMP reference over the horizon.
+        zmp_ref: ZMP reference over the horizon.
     """
     zmp_ref = []
     for foot_step_now in foot_steps:
         for _ in range(no_samples_per_step):
-            x, y = foot_step_now.pose.translation[0], foot_step_now.pose.translation[1]
-            zmp_ref.append([x, y])
+            zmp_ref.append(foot_step_now.get_center_pose())
     return zmp_ref
+
+def calculate_linear_constraint(half_footprint_x, half_footprint_y, frame):
+    """
+    Calculates the linear constraint for the ZMP. Outputs the linear constraint matrix and vector.
+
+             lb <=   A * [x; y] <= ub
+    
+    Args:
+        half_footprint_x (float): Half of the footprint size in x direction.
+        half_footprint_y (float): Half of the footprint size in y direction.
+        frame (pin.SE3): Frame of ZMP in compared with world frame.
+    
+    Returns:
+        A (numpy.ndarray): Linear constraint matrix.
+        ub (numpy.ndarray): Linear constraint vector upper bound.
+        lb (numpy.ndarray): Linear constraint vector lower bound.
+    """
+    position = frame.translation
+    rotation_x_y = frame.rotation[0:2, 0:2]
+    A = rotation_x_y.T
+    ub = np.array([position[0] + half_footprint_x, position[1] + half_footprint_y])
+    lb = np.array([position[0] - half_footprint_x, position[1] - half_footprint_y])
+    return A, ub, lb
 
 class LIPMPC:
     """
@@ -216,7 +236,7 @@ class LIPMPC:
         self.Ad, self.Bd = discrete_LIP_dynamics(conf.g, conf.h, self.dt)
         
 
-    def buildSolveOCP(self, x_k: np.ndarray, ZMP_ref_k: np.ndarray, terminal_idx: int):
+    def buildSolveOCP(self, x_k: np.ndarray, ZMP_ref_k: list, terminal_idx: int):
         """
         Builds and solves the optimal control problem (OCP).
 
@@ -234,6 +254,10 @@ class LIPMPC:
         
         state = prog.NewContinuousVariables(self.no_samples, nx, 'state')
         control = prog.NewContinuousVariables(self.no_samples, nu, 'control')
+        ZMP_ref_k_pos = []
+        for ZMP_ref in ZMP_ref_k:
+            x, y = ZMP_ref.translation[0], ZMP_ref.translation[1]
+            ZMP_ref_k_pos.append([x, y])
         
         # 1. intial constraint
         for i in range(nx):
@@ -250,8 +274,8 @@ class LIPMPC:
 
         # 3. at each time step: keep the ZMP within the foot sole (use the footprint and planned step position)
         for i in range(self.no_samples):
-            prog.AddBoundingBoxConstraint(ZMP_ref_k[i] - conf.footprint, ZMP_ref_k[i] + conf.footprint, control[i])
-            #TODO: Problematic here: ZMP constraint size error
+            A, ub, lb = calculate_linear_constraint(self.conf.footprint[0]/2, self.conf.footprint[1]/2, ZMP_ref_k[i])
+            prog.AddLinearConstraint(A, lb, ub, control[i, :])
 
         # 4. if terminal_idx < self.no_samples than we have the terminal state within
         # the current horizon. In this case create the terminal state (foot step pos + zero vel)
@@ -262,21 +286,21 @@ class LIPMPC:
                     if j == 1 or j == 3:  # Velocity components
                         prog.AddLinearEqualityConstraint(state[i, j] == 0)
                     else:                 # Position components
-                        prog.AddLinearEqualityConstraint(state[i, j] == ZMP_ref_k[terminal_idx][j//2])
+                        prog.AddLinearEqualityConstraint(state[i, j] == ZMP_ref_k_pos[terminal_idx][j//2])
 
     
         # setup our cost: minimize zmp error (tracking), minimize CoM velocity (smoothing)
         for i in range(self.no_samples):
             # tracking cost
-            zmp_error = control[i] - ZMP_ref_k[i]
-            tracking_cost = conf.alpha * zmp_error @ zmp_error
+            zmp_error = control[i] - ZMP_ref_k_pos[i]
+            tracking_cost = self.conf.alpha * zmp_error @ zmp_error
             prog.AddCost(tracking_cost)
 
             # smoothing cost
             com_velocity_x = state[i, 1]
             com_velocity_y = state[i, 3]
             com_velocity = np.array([com_velocity_x, com_velocity_y])
-            smoothing_cost = conf.gamma * com_velocity @ com_velocity
+            smoothing_cost = self.conf.gamma * com_velocity @ com_velocity
             prog.AddCost(smoothing_cost)
 
         # solve
@@ -296,3 +320,57 @@ class LIPMPC:
         
         self.ZMP_ref_k = ZMP_ref_k
         return self.U_k[0]
+    
+
+if __name__ == "__main__":
+    import pinocchio as pin
+    import matplotlib.pyplot as plt
+    from bullet_sims import talos_conf as conf
+    foot_planner = FootStepPlanner(conf.step_size_x, conf.step_size_y, conf.lfxp, conf.lfxn, conf.lfyp, conf.lfyn)
+    start_pose = pin.SE3.Identity()
+
+    half_footprint_x = 0.1
+    half_footprint_y = 0.065
+
+    frame_test_1 = pin.SE3.Identity()
+    frame_test_1.translation = np.array([0.1, 0.1, 0])
+    frame_test_1.rotation = pin.rpy.rpyToMatrix(0, 0, 0.2)
+    A, ub, lb = calculate_linear_constraint(half_footprint_x, half_footprint_y, frame_test_1)
+    # use a grid to visualize if value is within the bounds
+    x = np.linspace(-0.3, 0.3, 100)
+    y = np.linspace(-0.3, 0.3, 100)
+    X, Y = np.meshgrid(x, y)
+    Z1 = np.zeros_like(X)
+    Z2 = np.zeros_like(X)
+    for i in range(X.shape[0]):
+        for j in range(X.shape[1]):
+            Z1[i, j] = np.dot(A, np.array([X[i, j], Y[i, j]]))[0]
+            Z2[i, j] = np.dot(A, np.array([X[i, j], Y[i, j]]))[1]
+    fig, ax = plt.subplots()
+    ax.contour(X, Y, Z1, levels=[lb[0], ub[0]], colors='r')
+    ax.contour(X, Y, Z2, levels=[lb[1], ub[1]], colors='b')
+    Z3 = np.zeros_like(X)
+    for i in range(X.shape[0]):
+        for j in range(X.shape[1]):
+            if lb[0] <= Z1[i, j] <= ub[0] and lb[1] <= Z2[i, j] <= ub[1]:
+                Z3[i, j] = 1
+    ax.contourf(X, Y, Z3, levels=[0.9, 1.1], colors=['green','white'], alpha=0.5)
+    ax.set_aspect('equal')
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    plt.show()
+
+    # steps2 = foot_planner.plan_steps(start_pose, Side.RIGHT, 10, 0.5, walking_start = True, walking_stop = False)
+    # mpc = LIPMPC(conf)
+    # x_k = np.array([0, 0, 0, 0])
+    # ZMP_ref_k = []
+    # ZMP_real_k = []
+    # for step in steps2:
+    #     for _ in range(conf.no_mpc_samples_per_step):
+    #         ZMP_ref_k.append(step.pose)
+    # for i in range(10):
+    #     for j in range(conf.no_mpc_samples_per_step):
+    #         u = mpc.buildSolveOCP(x_k, ZMP_ref_k, 1000)
+    #         ZMP_real_k.append(u)
+
+    # plot the ZMP reference and the calculated ZMP
