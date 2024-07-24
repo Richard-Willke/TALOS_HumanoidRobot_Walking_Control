@@ -530,7 +530,12 @@ class Talos:
         # return ZMP_all
         return ZMP_all, ZMP_l, ZMP_r
     
-
+    def compute_CMP(self, f_react):
+        p_com = self.robot.baseCoMPosition()
+        CMP_all = np.array([p_com[0] - f_react[0] / f_react[2] * p_com[2],
+                            p_com[1] - f_react[1] / f_react[2] * p_com[2],
+                            0])
+        return CMP_all
 
     def compute_DCM(self, g=9.81):
         """
@@ -549,3 +554,10 @@ class Talos:
         omega = np.sqrt(g / xp[2])
         DCM = xp[:2] + xp_dot[:2] / omega
         return DCM
+    
+    def compute_omega(self, g=9.81):
+        """
+        Computes the natural frequency of the robot
+        """
+        xp = self.robot.baseCoMPosition()
+        return np.sqrt(g / xp[2])

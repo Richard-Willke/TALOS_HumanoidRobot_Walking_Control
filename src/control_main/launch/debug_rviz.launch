@@ -2,7 +2,7 @@
 <launch>
     <param name="robot_description" command="cat $(find talos_description)/robots/talos_reduced_no_hands.urdf" />
    
-    <node name="main_node" pkg="control_main" type="walk_tutorial.py" output="screen" required="true"/>
+    <node name="main_node" pkg="control_main" type="walk_jump_control.py" output="screen" required="true"/>
 
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
 

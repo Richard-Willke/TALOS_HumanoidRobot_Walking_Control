@@ -13,10 +13,12 @@ class Debugger():
         self.com_pin = []
         self.com_tsid = []
         self.com_ref = []
+        self.com_ankle = []
 
         self.com_pin_vel = []
         self.com_tsid_vel = []
         self.com_ref_vel = []
+        self.com_ankle_vel = []
         
         self.com_pin_acc = []
         self.com_tsid_acc = []
@@ -40,27 +42,37 @@ class Debugger():
         self.angularMoment = []
         self.refMoment = []
     
-    def record(self, robot, interpolator, dt, ZMP_ref):
-        c, c_dot, c_ddot = interpolator.comState()
+    def record(self, robot, interpolator, dt, u_k, com_ankle_desire, com_ankle_desire_dot):
+        if interpolator is not None:
+            c, c_dot, c_ddot = interpolator.comState()
+        else:
+            c, c_dot, c_ddot = np.array([0,0,0]), np.array([0,0,0]), np.array([0,0,0])
         self.com_ref.append(c)
         self.com_ref_vel.append(c_dot)
         self.com_ref_acc.append(c_ddot)
+        self.com_ankle.append(com_ankle_desire)
+        self.com_ankle_vel.append(com_ankle_desire_dot)
         self.com_tsid.append(robot.stack.comState().value())
         self.com_tsid_vel.append(robot.stack.comState().derivative())
-        self.com_tsid_acc.append(np.array([max(min(1.5,(self.com_tsid_vel[-1][0]-self.com_tsid_vel[-2][0])/dt),-1.5),max(min(1.5,(self.com_tsid_vel[-1][1]-self.com_tsid_vel[-2][1])/dt),-1.5),0]))
-        self.com_pin.append(robot.robot.baseCoMPosition())
         try:
-            acc = (robot.robot.baseCoMVelocity() - self.com_pin_vel[-1])/dt
-            self.com_pin_acc.append(np.array([max(min(1.5,(acc[0])),-1.5),max(min(1.5,(acc[1])),-1.5),0]))
+            acc = (self.com_tsid_vel[-1] - self.com_tsid_vel[-2])/dt
+            self.com_tsid_acc.append(acc)
         except:
-            self.com_pin_acc.append(np.array([0,0,0]))
-        self.com_pin_vel.append(robot.robot.baseCoMVelocity())
+            self.com_tsid_acc.append([0,0,0])        
+        self.com_pin.append(robot.robot.baseCoMPosition())
+        self.com_pin_vel.append(robot.robot.baseCoMVelocity())        
+        try:
+            acc = (self.com_pin_vel[-1] - self.com_pin_vel[-2])/dt
+            self.com_pin_acc.append(acc)
+        except:
+            self.com_pin_acc.append([0,0,0])
+
         if len(self.time) >= 1:
             self.time.append(self.time[-1] + dt)
         else:
             self.time.append(dt)
 
-        self.ZMP_plan.append(ZMP_ref.translation)
+        self.ZMP_plan.append(u_k)
         self.ZMP_est.append(robot.zmp)
         self.DCM_est.append(robot.dcm)
 
@@ -88,10 +100,12 @@ class Debugger():
         self.com_pin = np.array(self.com_pin).T
         self.com_tsid = np.array(self.com_tsid).T
         self.com_ref = np.array(self.com_ref).T
+        self.com_ankle = np.array(self.com_ankle).T
         
         self.com_pin_vel = np.array(self.com_pin_vel).T
         self.com_tsid_vel = np.array(self.com_tsid_vel).T
         self.com_ref_vel = np.array(self.com_ref_vel).T
+        self.com_ankle_vel = np.array(self.com_ankle_vel).T
 
         self.com_pin_acc = np.array(self.com_pin_acc).T
         self.com_tsid_acc = np.array(self.com_tsid_acc).T
@@ -109,14 +123,17 @@ class Debugger():
         ax_pos[0].plot(self.time, np.array(self.com_pin)[0][:], label='COM PIN 0')
         ax_pos[0].plot(self.time, np.array(self.com_tsid)[0][:], label='COM tsid 0')
         ax_pos[0].plot(self.time, np.array(self.com_ref)[0][:], linestyle=':', label='COM REF 0')
+        ax_pos[0].plot(self.time, np.array(self.com_ankle)[0][:], linestyle='--', label='COM Ankle 0')
 
         ax_pos[1].plot(self.time, np.array(self.com_pin)[1][:], label='COM PIN 1')
         ax_pos[1].plot(self.time, np.array(self.com_tsid)[1][:], label='COM tsid 1')
         ax_pos[1].plot(self.time, np.array(self.com_ref)[1][:], linestyle=':', label='COM REF 1')
+        ax_pos[1].plot(self.time, np.array(self.com_ankle)[1][:], linestyle='--', label='COM Ankle 1')
 
         ax_pos[2].plot(self.time, np.array(self.com_pin)[2][:], label='COM PIN 2')
         ax_pos[2].plot(self.time, np.array(self.com_tsid)[2][:], label='COM tsid 2')
         ax_pos[2].plot(self.time, np.array(self.com_ref)[2][:], linestyle=':', label='COM REF 2')
+        ax_pos[2].plot(self.time, np.array(self.com_ankle)[2][:], linestyle='--', label='COM Ankle 2')
 
         ax_pos[0].set_ylabel('CoM Position x [m]')
         ax_pos[1].set_ylabel('CoM Position y [m]')
@@ -135,14 +152,17 @@ class Debugger():
         ax_vel[0].plot(self.time, np.array(self.com_pin_vel)[0][:], label='COM PIN 0')
         ax_vel[0].plot(self.time, np.array(self.com_tsid_vel)[0][:], label='COM tsid 0')
         ax_vel[0].plot(self.time, np.array(self.com_ref_vel)[0][:], linestyle=':', label='COM REF 0')
+        ax_vel[0].plot(self.time, np.array(self.com_ankle_vel)[0][:], linestyle='--', label='COM Ankle 0')
 
         ax_vel[1].plot(self.time, np.array(self.com_pin_vel)[1][:], label='COM PIN 1')
         ax_vel[1].plot(self.time, np.array(self.com_tsid_vel)[1][:], label='COM tsid 1')
         ax_vel[1].plot(self.time, np.array(self.com_ref_vel)[1][:], linestyle=':', label='COM REF 1')
+        ax_vel[1].plot(self.time, np.array(self.com_ankle_vel)[1][:], linestyle='--', label='COM Ankle 1')
         
         ax_vel[2].plot(self.time, np.array(self.com_pin_vel)[2][:], label='COM PIN 2')
         ax_vel[2].plot(self.time, np.array(self.com_tsid_vel)[2][:], label='COM tsid 2')
         ax_vel[2].plot(self.time, np.array(self.com_ref_vel)[2][:], linestyle=':', label='COM REF 2')
+        ax_vel[2].plot(self.time, np.array(self.com_ankle_vel)[2][:], linestyle='--', label='COM Ankle 2')
 
         ax_vel[0].set_ylabel('CoM Velocity x [m/s]')
         ax_vel[1].set_ylabel('CoM Velocity y [m/s]')
@@ -304,4 +324,4 @@ class Debugger():
         #                   Plot Show                   #
         #################################################
         plt.tight_layout()
-        plt.show(block=True)
+        plt.show(block=False)

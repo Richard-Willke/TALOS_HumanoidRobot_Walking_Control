@@ -16,8 +16,12 @@ from zmp_plan.lip_mpc import LIPMPC, LIPInterpolator
 
 from state_machines.gait_fsm import GaitFSM
 from state_machines.mpc_fsm import MPC_FSM
+from debugger.debugger import Debugger
 
 from enum import Enum
+
+DEBUG_INFO = True
+debugger = Debugger()
 
 class State(Enum):
     """The state of the robot"""
@@ -40,8 +44,8 @@ class Main_Controller:
 
         self.joy_stick_vertical = 0.0
         self.joy_stick_horizontal = 0.0
-        self.step_length_command = 0.25
-        self.curvature_command = 0.0
+        self.step_length_command = 0.15
+        self.curvature_command = 0.2
 
         self.start_prewalk_clock = 0.0
         self.start_step_clock = 0.0
@@ -54,6 +58,8 @@ class Main_Controller:
         self.interpolator = None
         self.gait_fsm = None
         self.mpc_fsm = None
+        self.com_ankle_desire = np.array([0, 0, 0])
+        self.com_ankle_desire_dot = np.array([0, 0, 0])
 
         # initialize the robot reference
         c = np.array([0, 0, 0.85])
@@ -89,9 +95,12 @@ class Main_Controller:
 
         elif self.state == State.PRE_WALK:
             if self.t - self.start_prewalk_clock > 2.0:
+                robot.unContactSwingFoot()
                 self.N_walk = 0
                 self.to_post_walk = False
-                robot.unContactSwingFoot()
+                self.com_ankle_desire = self.robot.stack.comState().value()
+                self.com_ankle_desire_dot = self.robot.stack.comState().derivative()
+                
                 self.state = State.WALK
                 rospy.loginfo("[PRE_WALK] --> [WALK]")
 
@@ -168,6 +177,15 @@ class Main_Controller:
                 c, c_dot, c_ddot = self.interpolator.comState()
                 robot.stack.setComRefState(c, c_dot, c_ddot)
 
+                omega = self.robot.compute_omega()
+                Kp = omega - 1.5
+                Kx = omega + 1.0
+                zmp_real = self.robot.compute_ZMP()[0]
+                zmp_ref = np.hstack([u_k,0])
+                self.com_ankle_desire_dot = c_dot - Kx * (self.com_ankle_desire - c) + Kp * (zmp_real - zmp_ref)
+                self.com_ankle_desire += self.com_ankle_desire_dot * dt
+                robot.stack.setComRefState(self.com_ankle_desire, self.com_ankle_desire_dot)
+                
                 robot.stack.setTorsoRefState(T_swing)
                 
                 self.N_walk += 1
@@ -188,7 +206,25 @@ class Main_Controller:
                 self.robot.publish()
 
             # record debug info
-            # Add in need
+            try:
+                u_k
+            except NameError:
+                u_k = None 
+            if DEBUG_INFO:
+                if u_k is not None:
+                    u_k_debug = np.hstack([u_k, 0])
+                else:
+                    u_k_debug = np.array([0, 0, 0])
+                if self.com_ankle_desire is not None:
+                    com_ankle_desire_debug = np.array(self.com_ankle_desire)
+                else:
+                    com_ankle_desire_debug = np.array([0, 0, 0])
+
+                if self.com_ankle_desire_dot is not None:
+                    com_ankle_desire_dot_debug = np.array(self.com_ankle_desire_dot)
+                else:
+                    com_ankle_desire_dot_debug = np.array([0, 0, 0])
+                debugger.record(self.robot, self.interpolator, dt, u_k_debug, com_ankle_desire_debug, com_ankle_desire_dot_debug)
 
 
 if __name__=='__main__':
