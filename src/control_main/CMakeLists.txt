@@ -112,8 +112,11 @@ catkin_package(
 
 catkin_install_python(PROGRAMS
   scripts/walk_tutorial.py
+  scripts/walk_jump_control.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+
+catkin_python_setup()
 
 ###########
 ## Build ##

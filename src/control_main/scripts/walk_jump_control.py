@@ -8,12 +8,15 @@ from simulator.robot import Robot
 from simulator.pybullet_wrapper import PybulletWrapper
 
 from bullet_sims.talos import Talos
+from bullet_sims import talos_conf as conf
 
 from foot_plan.footstep_planner import Side, FootStep
 from foot_plan.foot_trajectory import SwingFootTrajectory
-
 from zmp_plan.lip_mpc import LIPMPC, LIPInterpolator
-from bullet_sims import talos_conf as conf
+
+from state_machines.gait_fsm import GaitFSM
+from state_machines.mpc_fsm import MPC_FSM
+
 from enum import Enum
 
 class State(Enum):
@@ -34,41 +37,72 @@ class Main_Controller:
         # initialize some states and variables
         self.state = State.INIT
         self.t = 0.0
-        self.go_command = 0.0
-        self.turn_command = 0.0
 
-        T_support_w = self.robot.supportFootPose()  
-        T_support_w.rotation = np.eye(3)
-        start_step = FootStep(T_support_w, np.array([conf.lfxp, conf.lfxn, conf.lfyp, conf.lfyn]), Side.RIGHT)
-        x0 = np.array([start_step.get_center_pose().translation[0], 0, start_step.get_center_pose().translation[1], 0])
+        self.joy_stick_vertical = 0.0
+        self.joy_stick_horizontal = 0.0
+        self.step_length_command = 0.25
+        self.curvature_command = 0.0
+
+        self.start_prewalk_clock = 0.0
+        self.start_step_clock = 0.0
+        self.N_walk = 0
+        self.to_post_walk = False
 
         # initialize some extra classes
         self.foot_trajectory = SwingFootTrajectory(pin.SE3.Identity(), pin.SE3.Identity(), conf.step_dur)
         self.mpc = LIPMPC(conf)
-        self.interpolator = LIPInterpolator(x0, conf)
+        self.interpolator = None
+        self.gait_fsm = None
+        self.mpc_fsm = None
 
-        # initialize the robot state
-        # c, c_dot, c_ddot = self.interpolator.comState()
-        # robot.stack.setComRefState(c, c_dot, c_ddot)
+        # initialize the robot reference
+        c = np.array([0, 0, 0.85])
+        zero_array = np.zeros(3)
+        robot.stack.setComRefState(c, zero_array, zero_array)
 
     def joy_callback(self, msg):
         pass
 
-    def command_callback(self, msg):
-        pass
-
     def detect_state_transition(self):
         if self.state == State.INIT:
-            if self.t > 2.0:
+            if self.t > 1.5:
                 self.state = State.STAND
+                rospy.loginfo("[INIT] --> [STAND]")
+
         elif self.state == State.STAND:
-            pass
+            if self.step_length_command > 0.0:
+                T_support_w = self.robot.supportFootPose()  
+                T_support_w.rotation = pin.exp3(np.array([0,0,pin.log3(T_support_w.rotation)[2]]))
+                start_step = FootStep(T_support_w, np.array([conf.lfxp, conf.lfxn, conf.lfyp, conf.lfyn]), self.robot.support_foot)
+
+                self.gait_fsm = GaitFSM(conf, start_step, self.step_length_command, self.simulator)
+
+                x0 = np.array([start_step.get_center_pose().translation[0], 0, start_step.get_center_pose().translation[1], 0])
+                self.interpolator = LIPInterpolator(x0, conf)
+
+                c, c_dot, c_ddot = self.interpolator.comState() 
+                robot.stack.setComRefState(c, c_dot, c_ddot)
+                
+                self.start_prewalk_clock = self.t
+                self.state = State.PRE_WALK
+                rospy.loginfo("[STAND] --> [PRE_WALK]")
+
         elif self.state == State.PRE_WALK:
-            pass
+            if self.t - self.start_prewalk_clock > 2.0:
+                self.N_walk = 0
+                self.to_post_walk = False
+                robot.unContactSwingFoot()
+                self.state = State.WALK
+                rospy.loginfo("[PRE_WALK] --> [WALK]")
+
         elif self.state == State.WALK:
-            pass
+            if self.to_post_walk:
+                self.state = State.POST_WALK
+                rospy.loginfo("[WALK] --> [POST_WALK]")
+
         elif self.state == State.POST_WALK:
             pass
+
 
     def main_execute(self):
         """The main function that controls the robot
@@ -78,10 +112,13 @@ class Main_Controller:
         rospy.loginfo("Starting the talos_walk_jump node")
 
         # setup some constants needed
-        dt = self.simulator.stepTime()   # simulator dt
+        dt = self.simulator.stepTime()                # simulator dt
+        steps_per_horizon = conf.no_steps_per_horizon # default 2
+        sim_per_mpc = conf.no_sim_per_mpc             # default 100
 
         # setup some variables needed
         t_publish = 0.0
+        is_last = False
 
         while not rospy.is_shutdown():
             # read the status
@@ -94,10 +131,50 @@ class Main_Controller:
                 pass
             elif self.state == State.PRE_WALK:
                 pass
+
             elif self.state == State.WALK:
-                pass
+                if self.N_walk == 0:
+                    swing_foot_target, foot_horizon = self.gait_fsm.init_horizon()
+                    swing_pose_current = self.robot.swingFootPose()
+                    self.foot_trajectory.reset(swing_pose_current, swing_foot_target)
+                    self.start_step_clock = self.t
+
+                    self.mpc_fsm = MPC_FSM(conf, foot_horizon, steps_per_horizon + 2, self.mpc)
+                
+                if self.N_walk % sim_per_mpc == 0:
+                    if is_last:
+                        self.robot.contactSwingFoot()
+                        self.robot.setSwingFoot(self.robot.support_foot)
+                        swing_foot_target, foot_horizon, is_terminal = self.gait_fsm.next_horizon(self.step_length_command, self.curvature_command)
+                        swing_pose_current = self.robot.swingFootPose()
+                        self.foot_trajectory.reset(swing_pose_current, swing_foot_target)
+                        self.start_step_clock = self.t
+
+                        if not is_terminal:
+                            self.mpc_fsm = MPC_FSM(conf, foot_horizon, steps_per_horizon + 2, self.mpc)
+                        else:
+                            self.mpc_fsm = MPC_FSM(conf, foot_horizon, steps_per_horizon + 1, self.mpc)
+                            self.to_post_walk = True
+
+                        is_last = False
+
+                    x0 = self.interpolator.x
+                    u_k, is_last = self.mpc_fsm.next_horizon(x0)
+                
+                T_swing, V_swing, A_swing = self.foot_trajectory.evaluate(self.t - self.start_step_clock)
+                robot.updateSwingFootRef(T_swing, V_swing, A_swing)
+
+                self.interpolator.integrate(u_k)
+                c, c_dot, c_ddot = self.interpolator.comState()
+                robot.stack.setComRefState(c, c_dot, c_ddot)
+
+                robot.stack.setTorsoRefState(T_swing)
+                
+                self.N_walk += 1
+
             elif self.state == State.POST_WALK:
                 pass
+                self.N_walk += 1
 
             self.detect_state_transition()
 
@@ -106,8 +183,8 @@ class Main_Controller:
             self.robot.update()
 
             # extra visualization publish to ros
-            if t - t_publish > 1./30.:
-                t_publish = t
+            if self.t - t_publish > 1./30.:
+                t_publish = self.t
                 self.robot.publish()
 
             # record debug info
