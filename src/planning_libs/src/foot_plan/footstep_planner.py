@@ -271,6 +271,46 @@ class FootStepPlanner:
             side = other_foot_id(side)
                                     
         return self.steps
+    
+    def plan_steps_rotate(self, T_first_w: pin.SE3, side: Side, no_steps: int, angle: float, walking_start: bool = False, walking_stop: bool = False):
+        """plan a sequence of steps in a line following a specified curvature.
+
+        Args:
+            T_first_w: the pose of the first step in the world frame
+            side: the side of the first step
+            no_steps: number of steps to be planned in the line (including the first step)
+            curvature: the angle to be rotated
+            walking_start: if the robot is walking from a standstill to have a extra parallel step at the beginning
+            walking_stop: if the robot is stopping to the standstill to have a extra parallel step at the end
+        
+        Returns:
+            steps( list(FootStep) ): a list of FootStep
+        """
+        T_center_w = pin.SE3.Identity()
+        if side == Side.RIGHT:                         # Notice: this is the opposite of the center_to_foot function
+            T_center_w.translation = T_first_w.translation + T_first_w.rotation @ np.array([0, self.step_size_y, 0])
+        else:
+            T_center_w.translation = T_first_w.translation + T_first_w.rotation @ np.array([0, -self.step_size_y, 0])
+        T_center_w.rotation = T_first_w.rotation
+
+        self.steps = []
+        self.steps.append(FootStep(T_first_w, self.footprint_array, side))
+        side = other_foot_id(side)
+
+        if walking_start:
+            self.__append_steps(T_center_w, side)
+            side = other_foot_id(side)
+
+        for i in range(1, no_steps):
+            T_center_w = T_center_w * pin.SE3(pin.rpy.rpyToMatrix(0, 0, angle), np.array([0, 0, 0]))
+            self.__append_steps(T_center_w, side)
+            side = other_foot_id(side)
+
+        if walking_stop:
+            self.__append_steps(T_center_w, side)
+            side = other_foot_id(side)
+                                    
+        return self.steps
 
     def plot(self, simulation):
         """plot all the planned footsteps in the pybullet simulation
@@ -298,19 +338,35 @@ if __name__=='__main__':
     start_pose = pin.SE3.Identity()
 
     # independent curve test trajectory
-    steps1 = foot_planner.plan_steps(start_pose, Side.RIGHT, 5, 0, walking_start = True, walking_stop = True)
+    # steps1 = foot_planner.plan_steps(start_pose, Side.RIGHT, 5, 0, walking_start = True, walking_stop = True)
+    # foot_planner.plot(simulator)
+
+    # start_pose.translation += np.array([0, 2, 0])
+    # steps2 = foot_planner.plan_steps(start_pose, Side.RIGHT, 10, 0.5, walking_start = True, walking_stop = False)
+    # foot_planner.plot(simulator)
+
+    # start_pose.translation += np.array([0, 2, 0])
+    # steps3 = foot_planner.plan_steps(start_pose, Side.RIGHT, 10, -0.5, walking_start = False, walking_stop = True)
+    # foot_planner.plot(simulator)
+
+    # start_pose.translation += np.array([0, 2, 0])
+    # steps3 = foot_planner.plan_steps(start_pose, Side.RIGHT, 40, 1, walking_start = False, walking_stop = False)
+    # foot_planner.plot(simulator)
+
+    start_pose.translation += np.array([0, 2, 0])
+    steps3 = foot_planner.plan_steps_rotate(start_pose, Side.RIGHT, 2, 0.2,  walking_start = True, walking_stop = False)
     foot_planner.plot(simulator)
 
     start_pose.translation += np.array([0, 2, 0])
-    steps2 = foot_planner.plan_steps(start_pose, Side.RIGHT, 10, 0.5, walking_start = True, walking_stop = False)
+    steps3 = foot_planner.plan_steps_rotate(start_pose, Side.RIGHT, 3, 0.2,  walking_start = False, walking_stop = False)
     foot_planner.plot(simulator)
 
     start_pose.translation += np.array([0, 2, 0])
-    steps3 = foot_planner.plan_steps(start_pose, Side.RIGHT, 10, -0.5, walking_start = False, walking_stop = True)
+    steps3 = foot_planner.plan_steps_rotate(start_pose, Side.RIGHT, 2, 0.2, walking_start = False, walking_stop = True)
     foot_planner.plot(simulator)
 
     start_pose.translation += np.array([0, 2, 0])
-    steps3 = foot_planner.plan_steps(start_pose, Side.RIGHT, 40, 1, walking_start = False, walking_stop = False)
+    steps3 = foot_planner.plan_steps_rotate(start_pose, Side.RIGHT, 10, 0.2, walking_start = True, walking_stop = True)
     foot_planner.plot(simulator)
 
     # a continuous curve test trajectory

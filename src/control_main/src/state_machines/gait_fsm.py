@@ -116,7 +116,7 @@ class GaitFSM():
         foot_horizon = list(self.footstepsList)
         return swing_foot_target, foot_horizon
 
-    def next_horizon(self, step_length: float, curvature: float):
+    def next_horizon(self, step_length: float, curvature: float, step_width: float, angle: float = 0.0):
         """Plan the next horizon
                [[1]]            [3]
         [[0]]->         [2]
@@ -139,6 +139,7 @@ class GaitFSM():
         Args:
             step_length: the step length
             curvature: the step curvature
+            angle: the step angle (when step_length and curvature are both 0, only turn the robot feet)
 
         Returns:
             swing_foot_target (pin.SE3): the next swinging foot target
@@ -157,8 +158,12 @@ class GaitFSM():
             is_terminal = True
         else:
             last_footstep = self.footstepsList[-1]
-            self.footstep_planner.update_step_size(step_length, self.conf.step_size_y)
-            new_footstep = self.footstep_planner.plan_steps(last_footstep.get_pose(), last_footstep.side, 2, curvature)[1]
+            self.footstep_planner.update_step_size(step_length, step_width)
+            if angle == 0.0:
+                new_footstep = self.footstep_planner.plan_steps(last_footstep.get_pose(), last_footstep.side, 2, curvature)[1]
+            else:
+                new_footstep = self.footstep_planner.plan_steps_rotate(last_footstep.get_pose(), last_footstep.side, 2, angle)[1]
+
             self.footstepsList.append(new_footstep)
             self.__display_last_footstep()
 
@@ -216,26 +221,32 @@ if __name__=='__main__':
         time.sleep(1)
         
         for i in range(3):
-            swing_foot_target, foot_horizon, is_terminal = gait_fsm.next_horizon(0.2, 0)
+            swing_foot_target, foot_horizon, is_terminal = gait_fsm.next_horizon(0.2, 0, 0.095)
             assert not is_terminal
             id_debug_list = debugRemoveAndAdd(id_debug_list, simulator, swing_foot_target, foot_horizon)
             time.sleep(0.5)
 
         for i in range(3):
-            swing_foot_target, foot_horizon, is_terminal = gait_fsm.next_horizon(0.2, 0.5)
+            swing_foot_target, foot_horizon, is_terminal = gait_fsm.next_horizon(0.2, 0.5, 0.095)
             assert not is_terminal
             id_debug_list = debugRemoveAndAdd(id_debug_list, simulator, swing_foot_target, foot_horizon)
             time.sleep(0.5)
 
         for i in range(3):
-            swing_foot_target, foot_horizon, is_terminal = gait_fsm.next_horizon(0.2, -0.5)
+            swing_foot_target, foot_horizon, is_terminal = gait_fsm.next_horizon(0.2, -0.5, 0.095)
+            assert not is_terminal
+            id_debug_list = debugRemoveAndAdd(id_debug_list, simulator, swing_foot_target, foot_horizon)
+            time.sleep(0.5)
+
+        for i in range(5):
+            swing_foot_target, foot_horizon, is_terminal = gait_fsm.next_horizon(0, 0, 0.095, angle = 0.25)
             assert not is_terminal
             id_debug_list = debugRemoveAndAdd(id_debug_list, simulator, swing_foot_target, foot_horizon)
             time.sleep(0.5)
 
         gait_fsm.to_stop_mode()
 
-        swing_foot_target, foot_horizon, is_terminal = gait_fsm.next_horizon(0.2, 0)
+        swing_foot_target, foot_horizon, is_terminal = gait_fsm.next_horizon(0.2, 0, 0.095)
         assert is_terminal
         id_debug_list = debugRemoveAndAdd(id_debug_list, simulator, swing_foot_target, foot_horizon)
         time.sleep(0.5)

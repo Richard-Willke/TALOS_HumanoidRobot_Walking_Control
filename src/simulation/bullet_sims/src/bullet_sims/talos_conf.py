@@ -105,7 +105,7 @@ v_max_scaling = 0.8             # scaling velocity bounds
 
 # step dimensions
 step_size_x = 0.20 # 0.25              # step size in x direction
-step_size_y = 0.096             # step size in y direction
+step_size_y = 0.095                      # step size in y direction
 
 # lip settings
 g = 9.81                        # gravity magnitude

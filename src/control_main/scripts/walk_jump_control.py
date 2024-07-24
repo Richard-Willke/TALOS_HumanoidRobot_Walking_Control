@@ -18,9 +18,12 @@ from state_machines.gait_fsm import GaitFSM
 from state_machines.mpc_fsm import MPC_FSM
 from debugger.debugger import Debugger
 
+from geometry_msgs.msg import Twist
+from tsid_wrap.tsid_wrapper import create_sample
+
 from enum import Enum
 
-DEBUG_INFO = True
+DEBUG_INFO = False
 debugger = Debugger()
 
 class State(Enum):
@@ -37,6 +40,7 @@ class Main_Controller:
         # setup the simulator and robot
         self.simulator = simulator
         self.robot = robot
+        self.sub = rospy.Subscriber('/cmd_vel', Twist, self.cmd_vel_callback)
 
         # initialize some states and variables
         self.state = State.INIT
@@ -45,7 +49,9 @@ class Main_Controller:
         self.joy_stick_vertical = 0.0
         self.joy_stick_horizontal = 0.0
         self.step_length_command = 0.15
-        self.curvature_command = 0.2
+        self.step_width_command = 0.095
+        self.curvature_command = 0.0
+        self.angle_command = 0.0
 
         self.start_prewalk_clock = 0.0
         self.start_step_clock = 0.0
@@ -66,12 +72,15 @@ class Main_Controller:
         zero_array = np.zeros(3)
         robot.stack.setComRefState(c, zero_array, zero_array)
 
-    def joy_callback(self, msg):
-        pass
+    def cmd_vel_callback(self, msg):
+        self.joy_stick_vertical = msg.linear.x
+        self.joy_stick_horizontal = msg.angular.z
+        self.step_length_command = conf.step_size_x * self.joy_stick_vertical
+        self.angle_command = self.joy_stick_horizontal * 0.2
 
     def detect_state_transition(self):
         if self.state == State.INIT:
-            if self.t > 1.5:
+            if self.t > 1.0:
                 self.state = State.STAND
                 rospy.loginfo("[INIT] --> [STAND]")
 
@@ -94,12 +103,13 @@ class Main_Controller:
                 rospy.loginfo("[STAND] --> [PRE_WALK]")
 
         elif self.state == State.PRE_WALK:
-            if self.t - self.start_prewalk_clock > 2.0:
+            if self.t - self.start_prewalk_clock > 1.5:
                 robot.unContactSwingFoot()
                 self.N_walk = 0
                 self.to_post_walk = False
                 self.com_ankle_desire = self.robot.stack.comState().value()
                 self.com_ankle_desire_dot = self.robot.stack.comState().derivative()
+                self.v_com_last = self.robot.stack.comState().derivative()
                 
                 self.state = State.WALK
                 rospy.loginfo("[PRE_WALK] --> [WALK]")
@@ -154,7 +164,7 @@ class Main_Controller:
                     if is_last:
                         self.robot.contactSwingFoot()
                         self.robot.setSwingFoot(self.robot.support_foot)
-                        swing_foot_target, foot_horizon, is_terminal = self.gait_fsm.next_horizon(self.step_length_command, self.curvature_command)
+                        swing_foot_target, foot_horizon, is_terminal = self.gait_fsm.next_horizon(self.step_length_command, 0, self.step_width_command, self.angle_command)
                         swing_pose_current = self.robot.swingFootPose()
                         self.foot_trajectory.reset(swing_pose_current, swing_foot_target)
                         self.start_step_clock = self.t
@@ -177,16 +187,26 @@ class Main_Controller:
                 c, c_dot, c_ddot = self.interpolator.comState()
                 robot.stack.setComRefState(c, c_dot, c_ddot)
 
-                omega = self.robot.compute_omega()
-                Kp = omega - 1.5
-                Kx = omega + 1.0
-                zmp_real = self.robot.compute_ZMP()[0]
-                zmp_ref = np.hstack([u_k,0])
-                self.com_ankle_desire_dot = c_dot - Kx * (self.com_ankle_desire - c) + Kp * (zmp_real - zmp_ref)
-                self.com_ankle_desire += self.com_ankle_desire_dot * dt
-                robot.stack.setComRefState(self.com_ankle_desire, self.com_ankle_desire_dot)
+                # omega = self.robot.compute_omega()
+                # Kp = omega - 0.5
+                # Kx = omega + 3.0
+                # zmp_real = self.robot.compute_ZMP()[0]
+                # zmp_ref = np.hstack([u_k,0])
+                # self.com_ankle_desire_dot = c_dot - Kx * (self.com_ankle_desire - c) + Kp * (zmp_real - zmp_ref)
+                # self.com_ankle_desire += self.com_ankle_desire_dot * dt
+                # robot.stack.setComRefState(self.com_ankle_desire, self.com_ankle_desire_dot)
                 
-                robot.stack.setTorsoRefState(T_swing)
+                robot.stack.setTorsoRefState(swing_foot_target)
+
+                v_com = robot.stack.comState().derivative()
+                a_com = (v_com - self.v_com_last) / conf.dt
+                self.v_com_last = v_com
+                gravity = simulator.gravity()
+                f_react = robot.robot.mass() * (a_com - gravity)
+                CMP_all = robot.compute_CMP(f_react)
+                K_gamma = 3.0  
+                angular_M_ref = K_gamma * (CMP_all - c)
+                robot.stack.amRef = create_sample(angular_M_ref)
                 
                 self.N_walk += 1
 
@@ -206,11 +226,11 @@ class Main_Controller:
                 self.robot.publish()
 
             # record debug info
-            try:
-                u_k
-            except NameError:
-                u_k = None 
             if DEBUG_INFO:
+                try:
+                    u_k
+                except NameError:
+                    u_k = None 
                 if u_k is not None:
                     u_k_debug = np.hstack([u_k, 0])
                 else:

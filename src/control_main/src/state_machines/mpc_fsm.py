@@ -192,8 +192,8 @@ if __name__=='__main__':
 
     ########### plan a footstep 3 (continuation)
     start_step = footstepsList2[1]
-    footstepsList3 = footstep_planner.plan_steps(start_step.get_pose(), start_step.side, 2, 0, walking_start=False, walking_stop=True)
-    mpc_fsm = MPC_FSM(conf, footstepsList3, 3, mpc)
+    footstepsList3 = footstep_planner.plan_steps(start_step.get_pose(), start_step.side, 3, 0, walking_start=False, walking_stop=False)
+    mpc_fsm = MPC_FSM(conf, footstepsList3, 4, mpc)
 
     u_k_all = []
     zmp_ref_all = []
@@ -219,7 +219,7 @@ if __name__=='__main__':
     plt.scatter(zmp_ref_all[:, 0], zmp_ref_all[:, 1], label='ZMP ref 3')
     plt.scatter(u_k_all[:, 0], u_k_all[:, 1], label='ZMP 3')
     
-    plt.legend(loc='upper center') 
+    # plt.legend(loc='upper center') 
     plt.show(block=False)
 
     print("Test passed")      

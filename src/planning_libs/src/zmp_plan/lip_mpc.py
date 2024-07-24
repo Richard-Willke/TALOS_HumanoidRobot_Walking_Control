@@ -303,6 +303,13 @@ class LIPMPC:
             smoothing_cost = self.conf.gamma * com_velocity @ com_velocity
             prog.AddCost(smoothing_cost)
 
+            # do the final step
+            # state_x = state[i,0]
+            # state_y = state[i,2]
+            # dist_to_final = np.array([state_x - ZMP_ref_k_pos[-1][0], state_y - ZMP_ref_k_pos[-1][1]])
+            # final_cost = 0.02 * dist_to_final @ dist_to_final
+            # prog.AddCost(final_cost)
+
         # solve
         result = Solve(prog)
         if not result.is_success:
