@@ -44,7 +44,7 @@ class FootStep:
         # check if the z axis of the pose is pointing upwards
         if not np.allclose(pose.rotation[:, 2], np.array([0, 0, 1]), atol=1e-4):
             print("[ Warning ]: FootStep().__init__: The z-axis of the pose is not pointing upwards.\n", pose)
-        self.pose = pose
+        self.pose = pin.SE3(pose)
         self.footprint_array = footprint_array
         self.side = side
         
@@ -294,7 +294,7 @@ if __name__=='__main__':
     # Generate a plan and plot it in pybullet.
     # Check that the plan looks as expected
     simulator = PybulletWrapper()
-    foot_planner = FootStepPlanner()
+    foot_planner = FootStepPlanner(conf.step_size_x, conf.step_size_y, conf.lfxp, conf.lfxn, conf.lfyp, conf.lfyn)
     start_pose = pin.SE3.Identity()
 
     # independent curve test trajectory
