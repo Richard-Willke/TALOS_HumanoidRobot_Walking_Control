@@ -219,15 +219,19 @@ def main():
             com_pb_vel.append(robot.robot.baseCoMVelocity())
             com_ref_vel.append(robot.stack.comReference().derivative())
 
-            com_pin_acc.append(robot.stack.comState().second_derivative())
             try:
-                acc = (com_ref_vel[-1] - robot.robot.baseCoMVelocity())/dt
+                acc = (com_pin_vel[-1] - com_pin_vel[-2])/dt
+                com_pin_acc.append(acc)
+            except:
+                com_pin_acc.append([0,0,0])
+            try:
+                acc = (com_pb_vel[-1] - com_pb_vel[-2])/dt
                 com_pb_acc.append(acc)
             except:
-                com_pb_acc([0,0,0])
+                com_pb_acc.append([0,0,0])
             com_ref_acc.append(robot.stack.comReference().second_derivative())
 
-            ZMP_plan.append(ZMP_ref[k])
+            ZMP_plan.append(ZMP_ref[k].translation)
             ZMP_est.append(robot.zmp)
             DCM_est.append(robot.dcm)
 
@@ -330,12 +334,15 @@ def main():
     figure_acc, ax_acc = plt.subplots(3, 1)
 
     ax_acc[0].plot(time, np.array(com_pin_acc)[0][:], label='COM PIN 0')
+    ax_acc[0].plot(time, np.array(com_pb_acc)[0][:], label='COM PB 0')
     ax_acc[0].plot(time, np.array(com_ref_acc)[0][:], linestyle=':', label='COM REF 0')
 
     ax_acc[1].plot(time, np.array(com_pin_acc)[1][:], label='COM PIN 1')
+    ax_acc[1].plot(time, np.array(com_pb_acc)[1][:], label='COM PB 1')
     ax_acc[1].plot(time, np.array(com_ref_acc)[1][:], linestyle=':', label='COM REF 1')
     
     ax_acc[2].plot(time, np.array(com_pin_acc)[2][:], label='COM PIN 2')
+    ax_acc[2].plot(time, np.array(com_pb_acc)[2][:], label='COM PB 2')
     ax_acc[2].plot(time, np.array(com_ref_acc)[2][:], linestyle=':', label='COM REF 2')
 
     ax_acc[0].set_ylabel('CoM Acceleration x [m/s]')
