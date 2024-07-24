@@ -176,6 +176,15 @@ class Talos:
         elif self.swing_foot == Side.RIGHT:
             self.stack.add_contact_RF()
 
+    def unContactSwingFoot(self):
+        """
+        Sets the swing foot of the robot on the given side.
+        """
+        if self.swing_foot == Side.LEFT:
+            self.stack.remove_contact_LF()
+        elif self.swing_foot == Side.RIGHT:
+            self.stack.remove_contact_RF()
+
         
     def updateSwingFootRef(self, T_swing_w: pin.SE3, V_swing_w: np.ndarray, A_swing_w: np.ndarray):
         """
