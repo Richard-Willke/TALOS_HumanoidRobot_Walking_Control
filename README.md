@@ -53,6 +53,8 @@ The system implements a multi-stage process using both TALOS' kinematic and dyna
 
 ## Analysis & Future Work 
 
+![Analysis](media/Model_Error.png)
+
 ![Future Work](media/Future_Work.png)
 
 
