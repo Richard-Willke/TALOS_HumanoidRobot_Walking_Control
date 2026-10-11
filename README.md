@@ -11,6 +11,8 @@ The system implements a multi-stage process using both TALOS' kinematic and dyna
 
 ![Gait Controller](media/Controller_Architecture.png)
 
+![Crocoddyl Implementation](media/Crocoddyl_implementation.png)
+
 ### Footstep Planner
 
 ![footstep planner](media/Footstep_Trajectory_principle.png)
