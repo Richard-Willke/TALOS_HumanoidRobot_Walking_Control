@@ -1,4 +1,4 @@
-# Legged_Robots_final_project
+# TALOS Humanoid Robot Gait Control
 
 This project implements a dynamic gait controller on the TALOS humanoid robot in PyBullet and Crocoddyl. 
 Walking is controlled through a CoM floating base on the basis of the Linear Inverted Pendelum (LIP) model.
