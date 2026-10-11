@@ -9,7 +9,7 @@ Walking is controlled through a CoM floating base on the basis of the Linear Inv
 
 The system implements a multi-stage process using both TALOS' kinematic and dynamic model (whole body controller), the closed-loop LIP-MPC and an open-loop footstep-planner and ZMP-reference generator. Each controller operates at a distinct sampling frequency as noted on the top of the graphic. 
 
-![Gait Controller](media/Controller_Archtecture.png)
+![Gait Controller](media/Controller_Architecture.png)
 
 ### Footstep Planner
 
