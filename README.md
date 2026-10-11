@@ -59,6 +59,8 @@ The interpolator uses a 5th degree polynomial to generate smooth trajectories fo
 
 ## NOTE: Curve Walking Behavior
 
+![Analysis](media/Model_Error.png)
+
 Turning on a curve has been observed to sometimes result in the robot falling. Observations suggest that the error stems from an inaccuracy in the LIP model resulting in a buildup of error between the CoM and its reference. Other differences were observed when dealing with slight differences in dynamics between PyBullet and Crocoddyl. Anaylsis of the dynamics within both simulators suggest that this stems from a numerical procesing difference between both engines. 
 
 ![LIP_Inaccuracies](media/LIP_Model_Inaccuracies.png)
@@ -72,8 +74,6 @@ Here an example legative result. One noticeable problem is the handling of self-
 
 
 ## Analysis & Future Work 
-
-![Analysis](media/Model_Error.png)
 
 Future work will focus on improvements of the LIP model to account for effects such as centripetal force. Furthermore, analysis on model behavior with uncertainties in foot friction contacts has to be analyzed in more detail. Designing a controller that can counteract said uncertainties is projected to also solve minor model inaccuracies. An adaptive controller is a valid candidate for this task. 
 
