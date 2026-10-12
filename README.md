@@ -3,7 +3,7 @@
 This project implements a dynamic gait controller on the TALOS humanoid robot in PyBullet and Crocoddyl. 
 Walking is controlled through a Center of Mass (CoM) floating base on the basis of the Linear Inverted Pendulum (LIP) model.
 
-<video controls src="media/Final_Walking_Behavior_Result.mp4" title="Title"></video>
+![walking result](media/Final_Walking_Behavior_Result.gif)
 
 ## Gait Control
 
@@ -33,7 +33,7 @@ The gait manager is controlled by a finite state machine. As long as there is no
 
 Here a demonstration of the gait manager over time: 
 
-<video controls src="media/Footstep_Generator_over_time.mp4" title="Title"></video>
+![footstep generator](media/Footstep_Generator_over_time.gif)
 
 
 ### MPC
@@ -52,9 +52,9 @@ The interpolator uses a 5th degree polynomial to generate smooth trajectories fo
 
 ## Results
 
-<video controls src="media/crocoddyl_performance_result_1.mp4" title="Title"></video>
+![results 1](media/crocoddyl_performance_result_1.gif)
 
-<video controls src="media/crocoddyl_performance_result_2.mp4" title="Title"></video>
+![results 2](media/crocoddyl_performance_result_2.gif)
 
 
 ## NOTE: Curve Walking Behavior
@@ -67,7 +67,7 @@ Turning on a curve has been observed to sometimes result in the robot falling. O
 
 Here an example negative result. One noticeable problem is the handling of self-collisions within both simulators: 
 
-<video controls src="media/Notealbe_Preformance_Differences_Crocoddyl_PyBullet.mp4" title="Title"></video>
+![performance difference](media/Performance_Difference_Pybullet_Crocoddyl.gif)
 
 
 
