@@ -2,6 +2,7 @@
 
 This project implements a dynamic gait controller on the TALOS humanoid robot in PyBullet and Crocoddyl. 
 Walking is controlled through a Center of Mass (CoM) floating base on the basis of the Linear Inverted Pendulum (LIP) model.
+A video going through the final project presentation is available [here](https://youtu.be/QV4HBCid_CU).
 
 ![walking result](media/Final_Walking_Behavior_Result.gif)
 
