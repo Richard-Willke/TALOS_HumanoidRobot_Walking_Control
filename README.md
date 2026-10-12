@@ -1,7 +1,7 @@
 # TALOS Humanoid Robot Gait Control
 
 This project implements a dynamic gait controller on the TALOS humanoid robot in PyBullet and Crocoddyl. 
-Walking is controlled through a Center of Mass (CoM) floating base on the basis of the Linear Inverted Pendelum (LIP) model.
+Walking is controlled through a Center of Mass (CoM) floating base on the basis of the Linear Inverted Pendulum (LIP) model.
 
 <video controls src="media/Final_Walking_Behavior_Result.mp4" title="Title"></video>
 
@@ -17,7 +17,7 @@ Walking and jumping motions are handled in an open-loop, offline manner using Cr
 
 ### Footstep Planner
 
-The footstep planner works by using arks of curvature k, defined as the inverse of the curvature radius r (k := 1/r), and the length of the trajectory l.  Footsteps are placed with equal distance to the curve on equally spaced distances of the arc. 
+The footstep planner works by using arcs of curvature k, defined as the inverse of the curvature radius r (k := 1/r), and the length of the trajectory l.  Footsteps are placed with equal distance to the curve on equally spaced distances of the arc. 
 
 ![footstep planner](media/Footstep_Trajectory_principle.png)
 
@@ -38,7 +38,7 @@ Here a demonstration of the gait manager over time:
 
 ### MPC
 
-The MPC is responsible for generating the CoM trajectory for the given horizon of steps as well as following said trajectory. The problem at hand is a finite horizon optimal control problem with constrains on its start and goal positions as well as linear bounds through the ZMP generated through the footsteps. The graphic below shows an example of a trajectory (blue line) with constraints by the foot steps (coloured rectangles). 
+The MPC is responsible for generating the CoM trajectory for the given horizon of steps as well as following said trajectory. The problem at hand is a finite horizon optimal control problem with constraints on its start and goal positions as well as linear bounds through the ZMP generated through the footsteps. The graphic below shows an example of a trajectory (blue line) with constraints by the foot steps (coloured rectangles). 
 
 ![CoM traj](media/CoM_Trajectory_Result_LIP_MPC_with_footstep_constraints.png)
 
@@ -61,11 +61,11 @@ The interpolator uses a 5th degree polynomial to generate smooth trajectories fo
 
 ![Analysis](media/Model_Error.png)
 
-Turning on a curve has been observed to sometimes result in the robot falling. Observations suggest that the error stems from an inaccuracy in the LIP model resulting in a buildup of error between the CoM and its reference. Other differences were observed when dealing with slight differences in dynamics between PyBullet and Crocoddyl. Anaylsis of the dynamics within both simulators suggest that this stems from a numerical procesing difference between both engines. 
+Turning on a curve has been observed to sometimes result in the robot falling. Observations suggest that the error stems from an inaccuracy in the LIP model resulting in a buildup of error between the CoM and its reference. Other differences were observed when dealing with slight differences in dynamics between PyBullet and Crocoddyl. Analysis of the dynamics within both simulators suggest that this stems from a numerical processing difference between both engines. 
 
 ![LIP_Inaccuracies](media/LIP_Model_Inaccuracies.png)
 
-Here an example legative result. One noticeable problem is the handling of self-colisions within both simulators: 
+Here an example negative result. One noticeable problem is the handling of self-collisions within both simulators: 
 
 <video controls src="media/Notealbe_Preformance_Differences_Crocoddyl_PyBullet.mp4" title="Title"></video>
 
